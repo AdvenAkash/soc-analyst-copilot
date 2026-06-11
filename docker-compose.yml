@@ -1,0 +1,49 @@
+version: "3.9"
+
+services:
+  vllm:
+    image: vllm/vllm-openai:latest
+    runtime: amd
+    devices:
+      - /dev/kfd
+      - /dev/dri
+    environment:
+      - HUGGING_FACE_HUB_TOKEN=${HF_TOKEN:-}
+      - ROCR_VISIBLE_DEVICES=0
+    command: >
+      --model ${VLLM_MODEL:-meta-llama/Llama-3.1-8B-Instruct}
+      --port 8001
+      --dtype float16
+      --max-model-len 4096
+      --gpu-memory-utilization 0.90
+    ports:
+      - "8001:8001"
+    volumes:
+      - huggingface_cache:/root/.cache/huggingface
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - LLM_BACKEND=vllm
+      - VLLM_BASE_URL=http://vllm:8001/v1
+      - CORS_ORIGINS=http://localhost:5173
+    depends_on:
+      - vllm
+    volumes:
+      - ./backend:/app
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+
+volumes:
+  huggingface_cache:
