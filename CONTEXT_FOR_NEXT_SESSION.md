@@ -6,137 +6,135 @@
 
 ## Project Identity
 
-**Name:** SOC Analyst Copilot  
-**Path:** `c:\2026 Learn\SOC_Analyst\soc-copilot\`  
-**Purpose:** AI-powered SOC dashboard — converts 500+ SIEM alerts into ranked, actionable security incidents using a 4-agent LLM pipeline  
-**Status:** Fully scaffolded, all 60 files written, ready to install and run
+**Name:** SOC Analyst Copilot
+**Repo:** https://github.com/AdvenAkash/soc-analyst-copilot
+**Local path:** `c:\2026 Learn\SOC_Analyst\soc-copilot\`
+**Live on:** `https://notebooks.amd.com/jupyter-hack-team-2652-260611211844-791ed408/proxy/8000/`
+**Purpose:** AI-powered SOC dashboard — converts 500+ SIEM alerts into ranked, actionable security incidents using a 4-agent LLM pipeline
+**Status:** ✅ Fully working on AMD notebooks.amd.com (MI300X GPU, Ollama + Llama 3.1 8B)
 
 ---
 
-## What Was Built (Complete File List)
+## Current State (as of last session)
+
+### What works
+- ✅ Frontend served by FastAPI on port 8000 (single-port deployment)
+- ✅ Nav tabs wired — Dashboard, Incidents, Alerts, Playbooks, Settings all functional
+- ✅ Ollama running with `HSA_OVERRIDE_GFX_VERSION=9.4.2` on AMD MI300X
+- ✅ Backend health API confirmed working
+- ✅ Fallback data works when LLM is down
+- ✅ All 4 agent pipeline: Triage → Threat Intel → Investigation → Playbook
+
+### Pending / In Progress
+- ⚠️ Agents hitting LLM but ISA error on MI300X — needs `HSA_OVERRIDE_GFX_VERSION=9.4.2` + Ollama restart to confirm
+- ⚠️ API URL routing via `import.meta.env.BASE_URL` — committed, needs rebuild on server
+
+---
+
+## Complete File List
 
 ```
 soc-copilot/
 ├── README.md
-├── GETTING_STARTED.md          ← full setup guide (written this session)
-├── ARCHITECTURE.md             ← full architecture + data flow (written this session)
+├── GETTING_STARTED.md          ← full setup + JupyterHub deploy guide
+├── ARCHITECTURE.md             ← architecture + data flow diagrams
 ├── CONTEXT_FOR_NEXT_SESSION.md ← this file
 ├── .gitignore
 ├── docker-compose.yml
 │
 ├── scripts/
 │   ├── start_vllm.sh           ← AMD ROCm vLLM startup
-│   └── start_ollama.sh         ← Ollama fallback startup
+│   └── start_ollama.sh         ← Ollama startup (default GFX 9.4.2 for MI300X)
 │
 ├── backend/
-│   ├── pyproject.toml          ← pip dependencies (fastapi, uvicorn, httpx, pydantic v2)
+│   ├── pyproject.toml
 │   ├── .env.example
 │   └── app/
-│       ├── main.py             ← FastAPI factory, CORS, router registration
-│       ├── config.py           ← pydantic-settings Settings (reads .env)
+│       ├── main.py             ← FastAPI factory + serves frontend/dist/ as static files
+│       ├── config.py           ← pydantic-settings (reads .env)
 │       ├── api/
-│       │   ├── dependencies.py ← get_llm_service() DI (lru_cache singleton)
+│       │   ├── dependencies.py ← get_llm_service() DI (lru_cache — restart to clear)
 │       │   └── routes/
 │       │       ├── analysis.py ← POST /api/analysis/run → SSE StreamingResponse
 │       │       └── health.py   ← GET /api/health
 │       ├── agents/
-│       │   ├── base_agent.py          ← abstract: run(), build_user_message(), fallback_result()
-│       │   ├── triage_agent.py        ← groups alerts into incidents, dismisses FPs
-│       │   ├── threat_intel_agent.py  ← MITRE ATT&CK + IOC enrichment
-│       │   ├── investigation_agent.py ← kill-chain timeline reconstruction
-│       │   └── playbook_agent.py      ← prioritized remediation playbook
-│       ├── services/
-│       │   └── llm_service.py  ← abstracts vLLM (OpenAI-compat) + Ollama backends
+│       │   ├── base_agent.py
+│       │   ├── triage_agent.py
+│       │   ├── threat_intel_agent.py
+│       │   ├── investigation_agent.py
+│       │   └── playbook_agent.py
+│       ├── services/llm_service.py  ← vLLM (OpenAI-compat) + Ollama backends
 │       ├── schemas/
-│       │   ├── alert.py        ← Alert, AlertSeverity Pydantic models
-│       │   ├── incident.py     ← Incident, MitreTechnique, TimelineEvent, ImmediateAction
-│       │   └── sse_event.py    ← SSEEvent, SSEEventType
-│       └── utils/
-│           └── json_parser.py  ← strips markdown fences, extracts JSON from LLM output
+│       │   ├── alert.py
+│       │   ├── incident.py
+│       │   └── sse_event.py
+│       └── utils/json_parser.py
 │
 └── frontend/
-    ├── package.json            ← react 18, vite 5, eslint, prettier, vitest
-    ├── vite.config.js          ← port 5173, /api proxy → localhost:8000
+    ├── package.json
+    ├── vite.config.js           ← base path via VITE_BASE_PATH env var; host: "0.0.0.0"
     ├── .eslintrc.cjs
     ├── .prettierrc
     ├── index.html
-    ├── .env.example
     └── src/
-        ├── main.jsx            ← createRoot entry
-        ├── App.jsx             ← root: GlobalNav + SubNav + 2-col layout + StickyBar
+        ├── main.jsx
+        ├── App.jsx              ← tab switching: Dashboard/Incidents/Alerts/Playbooks/Settings
         ├── constants/
-        │   ├── tokens.js       ← Apple Design System: COLOR, TYPE, RADIUS, SPACE
-        │   ├── alerts.js       ← SAMPLE_ALERTS[20] — full APT kill-chain scenario
-        │   └── fallback.js     ← FALLBACK_INCIDENTS — demo works without LLM
+        │   ├── tokens.js        ← Apple Design System tokens
+        │   ├── alerts.js        ← SAMPLE_ALERTS[20] full APT kill-chain
+        │   └── fallback.js      ← FALLBACK_INCIDENTS (no LLM needed)
         ├── utils/
-        │   ├── severity.js     ← getSeverityStyle(sev) → {color, background}
-        │   └── format.js       ← formatTime(), formatBytes()
-        ├── services/
-        │   └── api.js          ← createAnalysisStream(alerts) — fetch POST + ReadableStream
+        │   ├── severity.js
+        │   └── format.js
+        ├── services/api.js      ← uses import.meta.env.BASE_URL for correct proxy path
         ├── hooks/
-        │   ├── useAnalysis.js  ← useReducer pipeline state + SSE integration
-        │   └── useScrollFeed.js← auto-scroll ref hook
+        │   ├── useAnalysis.js
+        │   └── useScrollFeed.js
         └── components/
-            ├── layout/
-            │   ├── GlobalNav.jsx    ← 44px sticky black nav
-            │   ├── SubNav.jsx       ← 52px frosted sub-nav + Run button
-            │   └── StickyBar.jsx    ← fixed bottom bar (shown on pipeline_done)
-            ├── sections/
-            │   ├── HeroSection.jsx  ← hero tile, title changes on status
-            │   ├── StatsStrip.jsx   ← 4-stat grid
-            │   └── AgentPipeline.jsx← dark tile 2×2 agent grid
-            ├── alerts/
-            │   └── AlertFeed.jsx    ← scrolling alert list, highlights active alerts
-            ├── incidents/
-            │   ├── IncidentQueue.jsx← list of IncidentCards
-            │   ├── IncidentCard.jsx ← selectable card
-            │   └── IncidentDetail.jsx← full investigation panel (IOCs, MITRE, timeline, actions)
-            └── ui/
-                ├── AgentCard.jsx    ← animated status dot card
-                ├── Badge.jsx        ← severity/status pill
-                ├── Button.jsx       ← primary (blue) + ghost variants
-                ├── SectionLabel.jsx ← small-caps header
-                └── Timeline.jsx     ← vertical kill-chain timeline
+            ├── layout/GlobalNav.jsx    ← clickable tabs, active tab highlighted
+            ├── layout/SubNav.jsx
+            ├── layout/StickyBar.jsx
+            ├── sections/HeroSection.jsx
+            ├── sections/StatsStrip.jsx
+            ├── sections/AgentPipeline.jsx
+            ├── alerts/AlertFeed.jsx
+            ├── incidents/IncidentQueue.jsx
+            ├── incidents/IncidentCard.jsx
+            ├── incidents/IncidentDetail.jsx
+            └── ui/ (AgentCard, Badge, Button, SectionLabel, Timeline)
 ```
 
 ---
 
-## Tech Stack (Exact Versions)
+## Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
-| LLM Server | vLLM ≥ 0.5.0 on AMD ROCm ≥ 6.0 (or Ollama fallback) |
-| Default Model | `meta-llama/Llama-3.1-8B-Instruct` |
-| Backend Language | Python 3.11+ |
-| Backend Framework | FastAPI 0.111+ |
-| HTTP Client | httpx 0.27+ (async) |
-| Validation | Pydantic v2 |
-| Config | pydantic-settings + python-dotenv |
-| Streaming | Server-Sent Events via FastAPI StreamingResponse |
-| Frontend | React 18.3, Vite 5.3 |
-| Styling | Inline style objects + Apple Design System tokens |
-| State | useReducer (pipeline) + useState (UI) |
-| SSE Client | Native fetch + ReadableStream (not EventSource — allows POST) |
-| Bundler | Vite 5 |
+| GPU | AMD MI300X (~192 GB VRAM) on notebooks.amd.com |
+| LLM Server | Ollama (Llama 3.1 8B, Q4_K_M GGUF) |
+| ROCm GFX | `HSA_OVERRIDE_GFX_VERSION=9.4.2` (MI300X = gfx942) |
+| Backend | Python 3.11, FastAPI 0.111+, httpx, Pydantic v2 |
+| Frontend | React 18.3, Vite 5.3, inline Apple Design tokens |
+| Deployment | FastAPI serves both API + static frontend on port 8000 |
+| State | useReducer (pipeline) + useState (UI tabs) |
+| Streaming | SSE via fetch + ReadableStream (POST-compatible) |
 
 ---
 
-## Key Conventions (Do Not Change Without Reason)
+## Key Architecture Decisions
 
-1. **Inline styles only** — no CSS files, no Tailwind. All values from `tokens.js`
-2. **Never inline hex values** in components — always `COLOR.xxx` from tokens
-3. **Every agent has a `fallback_result()`** — pipeline must complete even without LLM
-4. **JSON only from LLM** — prompts end with "Return ONLY valid JSON — no markdown fences"
-5. **`json_parser.extract_json()`** — always used after LLM response; never `json.loads()` directly
-6. **`useReducer`** for pipeline state — not multiple `useState` calls
-7. **No CSS-in-JS libraries** — just style objects
+1. **Single-port deployment** — FastAPI mounts `frontend/dist/` as static files. No separate frontend server needed on JupyterHub. Everything on port 8000.
+2. **API URL via `BASE_URL`** — `api.js` uses `import.meta.env.BASE_URL` (Vite's base path) so API calls include the JupyterHub proxy prefix automatically.
+3. **Tab-based navigation** — No React Router. `activeTab` state in `App.jsx` switches between 5 views.
+4. **Graceful fallback** — Every agent has `fallback_result()`. Pipeline always completes even if LLM is down.
+5. **Inline styles only** — All values from `constants/tokens.js`. No CSS files, no Tailwind.
 
 ---
 
 ## Environment Variables (backend/.env)
 
 ```ini
-LLM_BACKEND=vllm                                  # "vllm" or "ollama"
+LLM_BACKEND=ollama                    # "vllm" or "ollama"
 VLLM_BASE_URL=http://localhost:8001/v1
 VLLM_MODEL=meta-llama/Llama-3.1-8B-Instruct
 VLLM_API_KEY=EMPTY
@@ -146,25 +144,66 @@ OLLAMA_MODEL=llama3.1:8b
 OLLAMA_TIMEOUT_SECONDS=120
 API_HOST=0.0.0.0
 API_PORT=8000
-CORS_ORIGINS=http://localhost:5173
+CORS_ORIGINS=https://notebooks.amd.com
 LLM_TEMPERATURE=0.1
 LLM_MAX_TOKENS=1500
 ```
 
 ---
 
-## Alert Schema (the input contract)
+## JupyterHub Startup (notebooks.amd.com) — Full Sequence
+
+```bash
+# 1. Install Node if needed
+apt-get install -y nodejs
+
+# 2. Pull latest
+cd /workspace/shared/soc-analyst-copilot
+git fetch origin && git reset --hard origin/main
+
+# 3. Start Ollama (MI300X GFX fix included in script)
+chmod +x scripts/start_ollama.sh
+./scripts/start_ollama.sh &
+
+# 4. Build frontend for port 8000
+cd frontend
+npm install
+VITE_BASE_PATH=/jupyter-hack-team-2652-260611211844-791ed408/proxy/8000/ npm run build
+
+# 5. Start backend (serves frontend + API on same port)
+cd ../backend
+pip install -e .
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+
+# 6. Open browser
+# https://notebooks.amd.com/jupyter-hack-team-2652-260611211844-791ed408/proxy/8000/
+```
+
+---
+
+## AMD GPU GFX Version Reference
+
+| GPU | HSA_OVERRIDE_GFX_VERSION |
+|-----|--------------------------|
+| AMD MI300X (notebooks.amd.com) | `9.4.2` |
+| AMD MI250X | `9.0.10` |
+| AMD RX 7000 series (RDNA3) | `11.0.0` |
+| AMD RX 6000 series (RDNA2) | `10.3.0` |
+
+---
+
+## Alert Schema
 
 ```typescript
 interface Alert {
-  id:     string;   // "A001" — unique
+  id:     string;   // "A001"
   time:   string;   // "HH:MM:SS"
   sev:    "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
-  rule:   string;   // SIEM rule name
-  src:    string;   // source IP or hostname
-  dst:    string;   // destination IP, hostname, or CIDR
-  detail: string;   // free-text description
-  host:   string;   // sensor/host that generated the alert
+  rule:   string;
+  src:    string;
+  dst:    string;
+  detail: string;
+  host:   string;
 }
 ```
 
@@ -173,91 +212,55 @@ interface Alert {
 ## SSE Event Protocol
 
 ```typescript
-// Stream of these events from POST /api/analysis/run:
 type SSEEvent =
-  | { type: "agent_start";   agent: string;  message: string }
-  | { type: "agent_done";    agent: string;  message: string; data: object }
+  | { type: "agent_start";   agent: string; message: string }
+  | { type: "agent_done";    agent: string; message: string; data: object }
   | { type: "pipeline_done"; incidents: Incident[] }
   | { type: "error";         message: string }
 ```
 
 ---
 
-## How to Start the App (Quick Reference)
+## Nav Tabs (App.jsx)
 
-```bash
-# Terminal 1 — LLM server
-./scripts/start_vllm.sh
-
-# Terminal 2 — Backend
-cd backend && pip install -e . && uvicorn app.main:app --port 8000 --reload
-
-# Terminal 3 — Frontend
-cd frontend && npm install && npm run dev
-
-# Browser → http://localhost:5173
-```
+| Tab | Content |
+|-----|---------|
+| Dashboard | Hero + Stats + Agent pipeline + Alert feed + Incident workspace |
+| Incidents | Full-width incident queue + detail panel |
+| Alerts | Expanded alert feed (all 20 alerts) |
+| Playbooks | All incident remediation playbooks + immediate actions |
+| Settings | Backend `.env` config reference panel |
 
 ---
 
-## Things to Add / Improve (Suggested Next Steps)
+## Things to Add / Improve
 
 ### High Priority
-- [ ] **File upload button** in the UI — drag-and-drop JSON alert file → `startAnalysis()`
-- [ ] **Real SIEM connector** — Python script to pull from Splunk/Elastic and POST to `/api/analysis/run`
-- [ ] **`npm install`** and test the frontend actually renders (hasn't been run yet)
-- [ ] **`pip install -e .`** and test the backend starts without import errors
+- [ ] Confirm agents run end-to-end with real LLM on MI300X (ISA fix pending test)
+- [ ] File upload button — drag-and-drop JSON alert file → `startAnalysis()`
+- [ ] Real SIEM connector (Splunk/Elastic → POST to `/api/analysis/run`)
 
 ### Medium Priority
-- [ ] **Persist incidents** — SQLite/PostgreSQL via SQLModel to save analysis history
-- [ ] **Authentication** — JWT or API key for the backend routes
-- [ ] **Multi-incident support** — currently triage may return 1 incident; UI should handle 5–10
-- [ ] **Export** — download incident report as PDF or JSON
-- [ ] **CSV import** — parse Splunk/Elastic CSV exports in the browser
-- [ ] **Alert filtering** — filter feed by severity, host, or rule
+- [ ] Persist incidents — SQLite via SQLModel
+- [ ] Export incident report as PDF or JSON
+- [ ] Alert filtering by severity / host / rule
+- [ ] Multi-incident triage — currently returns 1 INC; test with larger alert sets
 
 ### Low Priority
-- [ ] **Unit tests** — Vitest for frontend, pytest for backend agents
-- [ ] **Docker** — the `docker-compose.yml` exists but no `Dockerfile`s yet
-- [ ] **Dark mode** — design tokens support it; needs a ThemeProvider
-- [ ] **Streaming token-by-token** — show LLM output as it generates instead of waiting per agent
+- [ ] Unit tests (Vitest frontend, pytest backend)
+- [ ] Dockerfiles to match existing docker-compose.yml
+- [ ] Dark mode (tokens support it, needs ThemeProvider)
+- [ ] Streaming token-by-token display per agent
 
 ---
 
-## Known Limitations
+## Known Issues / Gotchas
 
-1. **`json_parser.py` regex**: The `\{[\s\S]*\}` pattern is greedy — works for single-object responses but may fail on streamed partial JSON. Currently all agents use `stream: false`.
-2. **Alert limit**: The sample has 20 alerts. The LLM context window is set to 4096 tokens. For 500+ real alerts, implement chunking in `triage_agent.py`.
-3. **No authentication**: The `/api/analysis/run` endpoint is open. For production, add API key middleware.
-4. **Single-incident UI assumption**: `IncidentDetail` renders one incident at a time. If triage returns 5 incidents, you click between them — but the MITRE/timeline display assumes one selected at a time.
-
----
-
-## Conversation Summary
-
-This project was built in one session by:
-1. Receiving a 50,000-character build prompt (truncated at `alerts.js` A014 entry)
-2. Reconstructing the missing parts (A014–A020 alerts, fallback incidents, all component specs)
-3. Launching a 26-agent parallel workflow that created all 60 files in ~5 minutes
-4. Verifying file creation and escape character correctness
-
-The user then asked:
-- How to provide more data for analysis → answered with 4 methods (edit alerts.js, file upload, direct POST, SIEM connector examples)
-- For this documentation set (GETTING_STARTED.md, ARCHITECTURE.md, CONTEXT_FOR_NEXT_SESSION.md)
-
----
-
-## For the Next Session
-
-Start by running the app to verify it works:
-
-```bash
-cd frontend && npm install && npm run dev
-```
-
-If there are React errors, the most likely issues are:
-1. Missing `vite.config.js` — file exists, check if content is correct
-2. Template literal escaping in JSX — any `\`` that should be a backtick
-3. Missing import in a component
-
-Then tackle whichever item from the "Things to Add" list above is most useful.
+| Issue | Root Cause | Fix |
+|-------|-----------|-----|
+| Agents don't run on JupyterHub | API calls resolve to wrong host | `api.js` now uses `BASE_URL` — rebuild frontend |
+| `HSA_STATUS_ERROR_INVALID_ISA` | Wrong GFX version for MI300X | `HSA_OVERRIDE_GFX_VERSION=9.4.2` |
+| Stale LLM config after `.env` change | `lru_cache` holds old `LLMService` | Restart uvicorn |
+| Blank page on JupyterHub | Assets load from wrong base path | `VITE_BASE_PATH=.../proxy/8000/ npm run build` |
+| `npm: command not found` | Node not installed in container | `apt-get install -y nodejs` |
+| `git pull` fails (local changes) | Server has modified files | `git fetch origin && git reset --hard origin/main` |

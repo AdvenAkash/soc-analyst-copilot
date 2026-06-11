@@ -3,23 +3,32 @@
 ## Overview
 
 ```
-Browser (React 18)
+Browser (React 18 — built static files)
     │
+    │  GET  /           → serves index.html  (from frontend/dist/)
+    │  GET  /assets/*   → serves JS/CSS bundles
     │  POST /api/analysis/run  [JSON: Alert[]]
     │  ◄── SSE stream  [data: {type, agent, message, data}]
     │
-FastAPI Backend (Python 3.11)
+FastAPI Backend (Python 3.11) — port 8000
+    │  serves frontend/dist/ AND API on the same port
     │
     ├── Agent 1: Triage        → groups alerts, dismisses FPs
     ├── Agent 2: Threat Intel  → MITRE ATT&CK + IOC enrichment
     ├── Agent 3: Investigation → kill-chain timeline reconstruction
     └── Agent 4: Playbook      → prioritized remediation steps
                 │
-                │  POST /v1/chat/completions
+                │  POST /api/chat            (Ollama)
+                │  POST /v1/chat/completions  (vLLM)
                 │
-vLLM Server (OpenAI-compatible, port 8001)
-    └── Llama 3.1 8B on AMD ROCm GPU
+Ollama / vLLM (port 11434 / 8001)
+    └── Llama 3.1 8B — AMD MI300X (gfx942, ~192 GB VRAM)
+        HSA_OVERRIDE_GFX_VERSION=9.4.2
 ```
+
+### Why single-port deployment?
+
+In JupyterHub, each port is a separate proxy path. Running frontend on 5173 and backend on 8000 means browser API calls include the 5173 proxy prefix, which never reaches port 8000. FastAPI serving both on port 8000 eliminates the cross-origin issue entirely.
 
 ---
 
@@ -250,6 +259,33 @@ ALERTS:
 The `json_parser.py` utility handles LLMs that disobey the "no fences" instruction by:
 1. Stripping ` ```json ` fences
 2. Finding the outermost `{...}` block with regex
+
+---
+
+## Frontend Navigation (Tab-Based)
+
+No React Router — `activeTab` state in `App.jsx` switches views. `GlobalNav` highlights the active tab.
+
+| Tab | Route Key | Content |
+|-----|-----------|---------|
+| Dashboard | `dashboard` | Hero + Stats + Agent pipeline + Alert feed + Incident workspace |
+| Incidents | `incidents` | Full-width incident queue + detail panel |
+| Alerts | `alerts` | Expanded alert feed |
+| Playbooks | `playbooks` | All incident remediation cards |
+| Settings | `settings` | Backend `.env` config reference |
+
+---
+
+## AMD GPU GFX Version Reference
+
+The `HSA_OVERRIDE_GFX_VERSION` env var must match the physical GPU or Ollama crashes with `HSA_STATUS_ERROR_INVALID_ISA`.
+
+| GPU | GFX Version |
+|-----|-------------|
+| AMD MI300X (notebooks.amd.com) | `9.4.2` |
+| AMD MI250X | `9.0.10` |
+| AMD RX 7000 series (RDNA3) | `11.0.0` |
+| AMD RX 6000 series (RDNA2) | `10.3.0` |
 
 ---
 

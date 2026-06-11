@@ -181,6 +181,13 @@ Visit **http://localhost:5173**
 
 This is the confirmed working method for `notebooks.amd.com`.
 
+### 0. Pull latest code
+
+```bash
+cd /workspace/shared/soc-analyst-copilot
+git fetch origin && git reset --hard origin/main
+```
+
 ### 1. Install Node.js in the container
 
 ```bash
@@ -195,7 +202,24 @@ cd /workspace/shared/soc-analyst-copilot/frontend
 npm install
 ```
 
-### 3. Build with your JupyterHub base path
+### 3. Start Ollama (AMD MI300X — GFX fix required)
+
+```bash
+# The script sets HSA_OVERRIDE_GFX_VERSION=9.4.2 for MI300X automatically
+chmod +x /workspace/shared/soc-analyst-copilot/scripts/start_ollama.sh
+/workspace/shared/soc-analyst-copilot/scripts/start_ollama.sh &
+```
+
+> **Why 9.4.2?** AMD MI300X uses gfx942. Ollama's default ISA check fails unless you override.
+> See GPU GFX version table in ARCHITECTURE.md.
+
+Verify it works:
+```bash
+curl http://localhost:11434/api/chat -d '{"model":"llama3.1:8b","messages":[{"role":"user","content":"hi"}],"stream":false}'
+# Should return a JSON response with "message.content"
+```
+
+### 4. Build with your JupyterHub base path — for port 8000 (single-port)
 
 Replace `jupyter-<your-id>` with your actual container ID from the URL:
 
@@ -211,20 +235,27 @@ VITE_BASE_PATH=/jupyter-<YOUR-ID>/proxy/5173/ npm run build
 VITE_BASE_PATH=/jupyter-hack-team-2652-260611211844-791ed408/proxy/5173/ npm run build
 ```
 
-### 4. Serve with Python
+### 5. Start the backend (serves frontend + API on same port)
 
 ```bash
-cd dist
-python3 -m http.server 5173 --bind 0.0.0.0
+cd /workspace/shared/soc-analyst-copilot/backend
+cp .env.example .env
+# Edit .env: set LLM_BACKEND=ollama and CORS_ORIGINS=https://notebooks.amd.com
+pip install -e .
+uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
-### 5. Open in browser
+FastAPI automatically serves the built frontend from `frontend/dist/` — no separate Python server needed.
+
+### 6. Open in browser
 
 ```
-https://notebooks.amd.com/jupyter-<YOUR-ID>/proxy/5173/
+https://notebooks.amd.com/jupyter-<YOUR-ID>/proxy/8000/
 ```
 
-> **Trailing slash matters.** `...5173/` works, `...5173` may not.
+> **Trailing slash matters.** `...8000/` works, `...8000` may not.
+
+> **Why port 8000 not 5173?** Backend and frontend now run on the same port. FastAPI serves the static files. This eliminates all cross-origin proxy issues.
 
 ### Finding your container ID
 
@@ -404,12 +435,14 @@ cd dist && python3 -m http.server 5173 --bind 0.0.0.0
 
 | Problem | Fix |
 |---------|-----|
-| `npm: command not found` | Install Node.js: `curl -fsSL https://deb.nodesource.com/setup_20.x \| bash - && apt-get install -y nodejs` |
-| Blank page on JupyterHub | Build with `VITE_BASE_PATH=/jupyter-<id>/proxy/5173/ npm run build` then serve with Python |
-| 404 on JS/CSS assets | `VITE_BASE_PATH` not set — assets loading from wrong path, see JupyterHub section |
-| Site loads but takes too long | Vite dev server not bound to `0.0.0.0` — use Python static server instead |
+| `npm: command not found` | `apt-get install -y nodejs` |
+| Blank page on JupyterHub | Build with `VITE_BASE_PATH=/jupyter-<id>/proxy/8000/ npm run build` |
+| 404 on JS/CSS assets | `VITE_BASE_PATH` not set — assets loading from wrong path |
+| Agents not spinning (no LLM calls) | API URL wrong — rebuild frontend with correct `VITE_BASE_PATH` |
+| `HSA_STATUS_ERROR_INVALID_ISA` | Wrong GFX version — use `HSA_OVERRIDE_GFX_VERSION=9.4.2` for MI300X |
+| `zstd: command not found` during Ollama install | `apt-get install -y zstd` |
+| Stale LLM config after editing `.env` | `lru_cache` holds old settings — restart uvicorn |
+| `git pull` fails (local changes conflict) | `git fetch origin && git reset --hard origin/main` |
 | `vLLM not found` | `pip install vllm --extra-index-url https://download.pytorch.org/whl/rocm6.0` |
 | `CORS error` in browser | Set `CORS_ORIGINS=https://notebooks.amd.com` in `backend/.env` |
-| Agents return fallback data | LLM server not running — check `http://localhost:8001/v1/models` |
 | `ModuleNotFoundError: app` | Run uvicorn from inside the `backend/` directory |
-| `HSA_OVERRIDE_GFX_VERSION` error | Set `HSA_OVERRIDE_GFX_VERSION=11.0.0` for AMD RDNA3 cards |
