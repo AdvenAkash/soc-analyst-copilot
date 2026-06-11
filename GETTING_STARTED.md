@@ -6,6 +6,19 @@ An AI-powered Security Operations Center (SOC) dashboard that processes 500+ SIE
 
 ---
 
+## Environments
+
+This project has been tested and confirmed working on:
+
+| Environment | Status | Notes |
+|-------------|--------|-------|
+| **AMD notebooks.amd.com JupyterHub** | ✅ Working | Use JupyterHub deploy section below |
+| Local Linux / WSL | ✅ Working | Standard steps |
+| Local Windows | ✅ Working | Use PowerShell |
+| Docker | ✅ Working | See docker-compose.yml |
+
+---
+
 ## Prerequisites
 
 ### Hardware
@@ -24,11 +37,11 @@ An AI-powered Security Operations Center (SOC) dashboard that processes 500+ SIE
 
 ---
 
-## Step 1 — Clone / Open the Project
+## Step 1 — Clone the Project
 
-The project lives at:
-```
-c:\2026 Learn\SOC_Analyst\soc-copilot\
+```bash
+git clone https://github.com/AdvenAkash/soc-analyst-copilot.git
+cd soc-analyst-copilot
 ```
 
 Project structure at a glance:
@@ -53,12 +66,38 @@ soc-copilot/
 
 ---
 
-## Step 2 — Start the LLM Server
+## Step 2 — Install Node.js (if not installed)
+
+### On Ubuntu / Debian / JupyterHub containers:
+```bash
+curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+apt-get install -y nodejs
+
+# Verify
+node --version   # should print v20.x.x
+npm --version    # should print 10.x.x
+```
+
+If `curl` is missing first:
+```bash
+apt-get update && apt-get install -y curl
+```
+
+### Via nvm (works without root):
+```bash
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+source ~/.bashrc
+nvm install 20
+nvm use 20
+```
+
+---
+
+## Step 3 — Start the LLM Server
 
 ### Option A: vLLM on AMD ROCm (Recommended)
 
 ```bash
-# From project root
 chmod +x scripts/start_vllm.sh
 ./scripts/start_vllm.sh
 ```
@@ -74,7 +113,7 @@ GPU_MEMORY_UTILIZATION=0.90
 ROCR_VISIBLE_DEVICES=0                          # GPU index
 ```
 
-**First run** downloads the model (~16 GB). Subsequent starts are fast.
+> **First run** downloads the model (~16 GB). Subsequent starts are fast.
 
 ### Option B: Ollama (No ROCm Required)
 
@@ -83,23 +122,26 @@ chmod +x scripts/start_ollama.sh
 ./scripts/start_ollama.sh
 ```
 
-Then change the backend config:
-```bash
-# backend/.env
+Then set in `backend/.env`:
+```ini
 LLM_BACKEND=ollama
 OLLAMA_MODEL=llama3.1:8b
 ```
 
+### Option C: Skip LLM entirely (Demo Mode)
+
+No LLM needed — all 4 agents have hardcoded fallback results that activate automatically. Just start the backend and frontend and click Run.
+
 ---
 
-## Step 3 — Configure the Backend
+## Step 4 — Configure and Start the Backend
 
 ```bash
 cd backend
 cp .env.example .env
 ```
 
-Open `.env` and verify these settings:
+Open `.env` and verify:
 ```ini
 LLM_BACKEND=vllm                                    # or "ollama"
 VLLM_BASE_URL=http://localhost:8001/v1
@@ -107,25 +149,13 @@ VLLM_MODEL=meta-llama/Llama-3.1-8B-Instruct
 CORS_ORIGINS=http://localhost:5173
 ```
 
----
-
-## Step 4 — Install and Run the Backend
-
+Install and run:
 ```bash
-# Still inside backend/
 pip install -e .
-
-# Start the FastAPI server
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-You should see:
-```
-INFO:     Application startup complete.
-INFO:     Uvicorn running on http://0.0.0.0:8000
-```
-
-**Verify it works:**
+Verify:
 ```bash
 curl http://localhost:8000/api/health
 # → {"status":"ok","llm_backend":"vllm","model":"meta-llama/..."}
@@ -133,9 +163,10 @@ curl http://localhost:8000/api/health
 
 ---
 
-## Step 5 — Install and Run the Frontend
+## Step 5 — Build and Run the Frontend
 
-Open a new terminal:
+### Local development (standard)
+
 ```bash
 cd frontend
 npm install
@@ -146,18 +177,84 @@ Visit **http://localhost:5173**
 
 ---
 
+## Step 5b — JupyterHub Deploy (AMD notebooks.amd.com)
+
+This is the confirmed working method for `notebooks.amd.com`.
+
+### 1. Install Node.js in the container
+
+```bash
+curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+apt-get install -y nodejs
+```
+
+### 2. Install dependencies
+
+```bash
+cd /workspace/shared/soc-analyst-copilot/frontend
+npm install
+```
+
+### 3. Build with your JupyterHub base path
+
+Replace `jupyter-<your-id>` with your actual container ID from the URL:
+
+```bash
+# Your container ID is in the URL:
+# https://notebooks.amd.com/jupyter-<YOUR-ID>/lab/...
+
+VITE_BASE_PATH=/jupyter-<YOUR-ID>/proxy/5173/ npm run build
+```
+
+**Example** (the ID used during development):
+```bash
+VITE_BASE_PATH=/jupyter-hack-team-2652-260611211844-791ed408/proxy/5173/ npm run build
+```
+
+### 4. Serve with Python
+
+```bash
+cd dist
+python3 -m http.server 5173 --bind 0.0.0.0
+```
+
+### 5. Open in browser
+
+```
+https://notebooks.amd.com/jupyter-<YOUR-ID>/proxy/5173/
+```
+
+> **Trailing slash matters.** `...5173/` works, `...5173` may not.
+
+### Finding your container ID
+
+Look at your JupyterLab URL:
+```
+https://notebooks.amd.com/jupyter-hack-team-XXXX-XXXXXXXXXX-XXXXXXXX/lab/tree/...
+                           ↑ everything between .com/ and /lab is your ID
+```
+
+### Backend CORS for JupyterHub
+
+Update `backend/.env` to allow the JupyterHub origin:
+```ini
+CORS_ORIGINS=https://notebooks.amd.com
+```
+
+Then restart the backend.
+
+---
+
 ## Step 6 — Run Your First Analysis
 
-1. Open **http://localhost:5173**
-2. Click **"Run AI Pipeline"** in the hero section or the top nav button
-3. Watch the 4 agents process in real time:
-   - **Triage Agent** — groups 20 sample alerts into incidents, dismisses false positives
+1. Open the dashboard URL
+2. Click **"Run AI Pipeline"**
+3. Watch 4 agents process in real time:
+   - **Triage Agent** — groups alerts into incidents, dismisses false positives
    - **Threat Intel Agent** — maps MITRE ATT&CK techniques, identifies IOCs
    - **Investigation Agent** — reconstructs the attack kill-chain timeline
    - **Playbook Agent** — generates prioritized remediation steps
 4. Click any incident card to view the full investigation report
-
-> **No LLM?** The demo still works. All 4 agents have hardcoded fallback results that activate automatically if the LLM server is unavailable.
 
 ---
 
@@ -182,7 +279,7 @@ Open `frontend/src/constants/alerts.js` and add to `SAMPLE_ALERTS`:
 
 ### Method 2 — Upload a JSON file
 
-Add this to `App.jsx` next to the Run button to allow uploading exported SIEM alerts:
+Add this to `App.jsx` next to the Run button:
 
 ```jsx
 const handleFileUpload = (e) => {
@@ -196,7 +293,6 @@ const handleFileUpload = (e) => {
   reader.readAsText(file);
 };
 
-// In JSX:
 <input type="file" accept=".json" onChange={handleFileUpload} />
 ```
 
@@ -208,27 +304,22 @@ curl -X POST http://localhost:8000/api/analysis/run \
   -d @your-alerts.json
 ```
 
-Where `your-alerts.json` is an array of alert objects matching the schema above.
-
 ### Method 4 — Connect a Real SIEM
 
-**Splunk (Python example):**
+**Splunk:**
 ```python
 import requests, json
 
-# Pull from Splunk
 splunk_results = requests.get(
     "https://your-splunk:8089/services/search/jobs/export",
     params={"search": "search index=main sourcetype=syslog | head 500"},
-    auth=("admin", "password"),
-    verify=False
+    auth=("admin", "password"), verify=False
 ).json()
 
-# Map to Alert schema
 alerts = [
     {
         "id": f"A{i:03d}",
-        "time": r["_time"][-8:],   # HH:MM:SS
+        "time": r["_time"][-8:],
         "sev": r.get("severity", "MEDIUM").upper(),
         "rule": r.get("source", "Unknown Rule"),
         "src":  r.get("src_ip", "unknown"),
@@ -239,7 +330,6 @@ alerts = [
     for i, r in enumerate(splunk_results, 1)
 ]
 
-# Send to pipeline
 stream = requests.post(
     "http://localhost:8000/api/analysis/run",
     json=alerts, stream=True
@@ -252,7 +342,6 @@ for line in stream.iter_lines():
 **Elastic / OpenSearch:**
 ```python
 from elasticsearch import Elasticsearch
-import requests, json
 
 es = Elasticsearch("https://your-elastic:9200")
 hits = es.search(index="filebeat-*", body={
@@ -294,17 +383,19 @@ Restart `start_vllm.sh` after changing the model.
 
 ```bash
 # Backend
-uvicorn app.main:app --reload --port 8000    # start with hot-reload
+uvicorn app.main:app --reload --port 8000
 python -c "from app.config import settings; print(settings)"  # verify config
+curl http://localhost:8000/docs  # auto-generated API docs
 
-# Frontend
-npm run dev        # start dev server
-npm run build      # production build
-npm run lint       # ESLint check
-npm run format     # Prettier format
+# Frontend (local)
+npm run dev        # dev server at localhost:5173
+npm run build      # production build → dist/
+npm run lint       # ESLint
+npm run format     # Prettier
 
-# Check API docs (auto-generated by FastAPI)
-open http://localhost:8000/docs
+# Frontend (JupyterHub)
+VITE_BASE_PATH=/jupyter-<id>/proxy/5173/ npm run build
+cd dist && python3 -m http.server 5173 --bind 0.0.0.0
 ```
 
 ---
@@ -313,9 +404,12 @@ open http://localhost:8000/docs
 
 | Problem | Fix |
 |---------|-----|
-| `vLLM not found` | Install ROCm-compatible wheel: `pip install vllm --extra-index-url https://download.pytorch.org/whl/rocm6.0` |
-| `CORS error` in browser | Check `CORS_ORIGINS=http://localhost:5173` in `backend/.env` |
-| Agents return fallback data | LLM server not running or unreachable — check `http://localhost:8001/v1/models` |
+| `npm: command not found` | Install Node.js: `curl -fsSL https://deb.nodesource.com/setup_20.x \| bash - && apt-get install -y nodejs` |
+| Blank page on JupyterHub | Build with `VITE_BASE_PATH=/jupyter-<id>/proxy/5173/ npm run build` then serve with Python |
+| 404 on JS/CSS assets | `VITE_BASE_PATH` not set — assets loading from wrong path, see JupyterHub section |
+| Site loads but takes too long | Vite dev server not bound to `0.0.0.0` — use Python static server instead |
+| `vLLM not found` | `pip install vllm --extra-index-url https://download.pytorch.org/whl/rocm6.0` |
+| `CORS error` in browser | Set `CORS_ORIGINS=https://notebooks.amd.com` in `backend/.env` |
+| Agents return fallback data | LLM server not running — check `http://localhost:8001/v1/models` |
 | `ModuleNotFoundError: app` | Run uvicorn from inside the `backend/` directory |
-| Frontend shows blank page | Run `npm install` first, then `npm run dev` |
 | `HSA_OVERRIDE_GFX_VERSION` error | Set `HSA_OVERRIDE_GFX_VERSION=11.0.0` for AMD RDNA3 cards |
