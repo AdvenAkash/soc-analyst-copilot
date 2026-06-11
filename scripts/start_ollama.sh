@@ -5,7 +5,12 @@
 set -euo pipefail
 
 MODEL="${OLLAMA_MODEL:-llama3.1:8b}"
-HSA_VERSION="${HSA_OVERRIDE_GFX_VERSION:-11.0.0}"
+# GFX version by GPU family:
+#   AMD MI300X (notebooks.amd.com) → 9.4.2
+#   AMD MI250X                     → 9.0.10
+#   AMD RX 7000 (RDNA3 consumer)   → 11.0.0
+#   AMD RX 6000 (RDNA2 consumer)   → 10.3.0
+HSA_VERSION="${HSA_OVERRIDE_GFX_VERSION:-9.4.2}"
 
 # Check ollama is installed
 if ! command -v ollama &>/dev/null; then
