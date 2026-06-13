@@ -7,31 +7,44 @@ export default function IncidentCard({ incident, selected, onSelect }) {
     <div
       onClick={() => onSelect(incident)}
       style={{
-        background: selected ? COLOR.primaryFocus : COLOR.canvas,
+        background: selected ? "rgba(0,102,204,0.05)" : COLOR.canvas,
         borderRadius: RADIUS.md,
         padding: `${SPACE.sm}px ${SPACE.md}px`,
         cursor: "pointer",
-        border: `1px solid ${selected ? COLOR.primaryFocus : COLOR.hairline}`,
-        transition: "all 0.15s",
+        border: `1px solid ${selected ? "rgba(0,102,204,0.22)" : COLOR.hairline}`,
+        borderLeft: `3px solid ${selected ? COLOR.primary : "transparent"}`,
+        transition: "all 0.15s ease",
       }}
     >
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: SPACE.xs }}>
+      {/* ID row */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: SPACE.xs,
+          marginBottom: SPACE.xxs,
+        }}
+      >
         <span
           style={{
             ...TYPE.scale.finePrint,
-            color: selected ? "rgba(255,255,255,0.70)" : COLOR.inkMuted48,
-            fontFamily: `"SF Mono", monospace`,
+            color: selected ? COLOR.primary : COLOR.inkMuted48,
+            fontFamily: `"SF Mono", "JetBrains Mono", monospace`,
+            fontWeight: selected ? 600 : 400,
           }}
         >
           {incident.id}
         </span>
         <Badge variant={incident.sev}>{incident.sev}</Badge>
       </div>
+
+      {/* Title */}
       <p
         style={{
           ...TYPE.scale.captionStrong,
-          color: selected ? COLOR.onDark : COLOR.ink,
-          margin: `${SPACE.xxs}px 0`,
+          color: COLOR.ink,
+          margin: `0 0 ${SPACE.xxs}px`,
           overflow: "hidden",
           textOverflow: "ellipsis",
           whiteSpace: "nowrap",
@@ -39,10 +52,12 @@ export default function IncidentCard({ incident, selected, onSelect }) {
       >
         {incident.title}
       </p>
+
+      {/* Summary */}
       <p
         style={{
           ...TYPE.scale.finePrint,
-          color: selected ? "rgba(255,255,255,0.60)" : COLOR.inkMuted48,
+          color: COLOR.inkMuted48,
           margin: 0,
           overflow: "hidden",
           textOverflow: "ellipsis",

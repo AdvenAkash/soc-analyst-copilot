@@ -16,31 +16,44 @@ export default function GlobalNav({ activeTab, onNav }) {
         position: "sticky",
         top: 0,
         zIndex: 100,
-        background: "rgba(0,0,0,0.85)",
-        backdropFilter: "blur(20px) saturate(180%)",
-        WebkitBackdropFilter: "blur(20px) saturate(180%)",
-        borderBottom: "1px solid rgba(255,255,255,0.08)",
+        background: COLOR.surfaceBlack,
+        borderBottom: "1px solid rgba(255,255,255,0.06)",
         height: 44,
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
-        padding: `0 ${SPACE.lg}px`,
+        padding: `0 ${SPACE.xl}px`,
       }}
     >
+      {/* Left: brand + nav */}
       <div style={{ display: "flex", alignItems: "center", gap: SPACE.xl }}>
-        <span
+        {/* Brand */}
+        <div
           onClick={() => onNav("dashboard")}
-          style={{
-            ...TYPE.scale.captionStrong,
-            color: COLOR.onDark,
-            letterSpacing: "0.04em",
-            textTransform: "uppercase",
-            cursor: "pointer",
-          }}
+          style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}
         >
-          SOC Copilot
-        </span>
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+            <path
+              d="M8 1.5L2.5 3.75V8C2.5 11.25 4.9 14.1 8 15C11.1 14.1 13.5 11.25 13.5 8V3.75L8 1.5Z"
+              fill={COLOR.primaryOnDark}
+            />
+          </svg>
+          <span
+            style={{
+              ...TYPE.scale.captionStrong,
+              color: COLOR.onDark,
+              letterSpacing: "0.06em",
+              textTransform: "uppercase",
+            }}
+          >
+            SOC Copilot
+          </span>
+        </div>
 
+        {/* Separator */}
+        <div style={{ width: 1, height: 14, background: "rgba(255,255,255,0.14)" }} />
+
+        {/* Nav items */}
         {NAV_ITEMS.map((item) => {
           const isActive = activeTab === item.key;
           return (
@@ -49,38 +62,72 @@ export default function GlobalNav({ activeTab, onNav }) {
               onClick={() => onNav(item.key)}
               style={{
                 ...TYPE.scale.navLink,
-                color: isActive ? COLOR.onDark : "rgba(255,255,255,0.60)",
+                color: isActive ? COLOR.onDark : "rgba(255,255,255,0.52)",
                 cursor: "pointer",
-                padding: `${SPACE.xxs}px ${SPACE.xs}px`,
-                borderRadius: RADIUS.xs,
-                background: isActive ? "rgba(255,255,255,0.12)" : "transparent",
-                transition: "all 0.15s",
                 userSelect: "none",
+                position: "relative",
+                paddingBottom: 2,
+                transition: "color 0.15s",
               }}
             >
               {item.label}
+              {isActive && (
+                <span
+                  style={{
+                    position: "absolute",
+                    bottom: -14,
+                    left: 0,
+                    right: 0,
+                    height: 2,
+                    background: COLOR.primaryOnDark,
+                    borderRadius: RADIUS.pill,
+                  }}
+                />
+              )}
             </span>
           );
         })}
       </div>
 
-      <div style={{ display: "flex", alignItems: "center", gap: SPACE.md }}>
-        <span style={{ ...TYPE.scale.navLink, color: "rgba(255,255,255,0.40)" }}>
-          AMD ROCm · vLLM
-        </span>
+      {/* Right: GPU status + avatar */}
+      <div style={{ display: "flex", alignItems: "center", gap: SPACE.sm }}>
         <div
           style={{
-            width: 28,
-            height: 28,
+            display: "flex",
+            alignItems: "center",
+            gap: 5,
+            padding: `3px 9px`,
+            borderRadius: RADIUS.pill,
+            border: "1px solid rgba(255,255,255,0.10)",
+          }}
+        >
+          <div
+            style={{
+              width: 5,
+              height: 5,
+              borderRadius: "50%",
+              background: COLOR.statusDone,
+            }}
+          />
+          <span style={{ ...TYPE.scale.navLink, color: "rgba(255,255,255,0.42)" }}>
+            AMD MI300X
+          </span>
+        </div>
+
+        <div
+          style={{
+            width: 26,
+            height: 26,
             borderRadius: "50%",
-            background: "linear-gradient(135deg, #0066cc, #32d74b)",
+            background: `linear-gradient(135deg, ${COLOR.primary} 0%, #32d74b 100%)`,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             ...TYPE.scale.finePrint,
             color: COLOR.onDark,
-            fontWeight: 600,
+            fontWeight: 700,
             cursor: "pointer",
+            letterSpacing: "0.02em",
           }}
         >
           SC

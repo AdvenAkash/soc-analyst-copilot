@@ -1,4 +1,10 @@
-const BASE = import.meta.env.VITE_API_BASE_URL || "";
+// Use explicit API URL if set, otherwise derive from Vite's BASE_URL
+// (BASE_URL = the base path, e.g. /jupyter-.../proxy/8000/ in JupyterHub)
+const BASE = (
+  import.meta.env.VITE_API_BASE_URL ||
+  import.meta.env.BASE_URL ||
+  "/"
+).replace(/\/$/, "");
 
 /**
  * Start the SSE analysis stream.
