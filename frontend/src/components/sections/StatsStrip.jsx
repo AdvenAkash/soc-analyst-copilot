@@ -2,7 +2,7 @@ import { COLOR, TYPE, SPACE, RADIUS } from "../../constants/tokens.js";
 
 /** @param {{ alertCount: number, incidentCount: number, fpCount: number, agentsDone: number }} props */
 export default function StatsStrip({ alertCount, incidentCount, fpCount, agentsDone }) {
-  const allDone = agentsDone === 4;
+  const allDone = agentsDone === 5;
 
   const stats = [
     {
@@ -28,7 +28,7 @@ export default function StatsStrip({ alertCount, incidentCount, fpCount, agentsD
     },
     {
       label: "AI Agents",
-      value: `${agentsDone}/4`,
+      value: `${agentsDone}/5`,
       sub: allDone ? "pipeline complete" : agentsDone > 0 ? "running…" : "ready",
       valueColor: allDone ? COLOR.statusDone : agentsDone > 0 ? COLOR.primary : COLOR.inkMuted48,
       bg: allDone ? "rgba(50,215,75,0.04)" : COLOR.canvas,
