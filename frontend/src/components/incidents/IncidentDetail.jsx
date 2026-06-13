@@ -2,6 +2,7 @@ import { COLOR, TYPE, SPACE, RADIUS } from "../../constants/tokens.js";
 import Badge from "../ui/Badge.jsx";
 import Timeline from "../ui/Timeline.jsx";
 import SectionLabel from "../ui/SectionLabel.jsx";
+import IncidentChat from "./IncidentChat.jsx";
 
 const SEV_ACCENT = {
   CRITICAL: { border: "rgba(255,59,48,0.20)",  bg: "rgba(255,59,48,0.04)"  },
@@ -114,6 +115,77 @@ export default function IncidentDetail({ incident }) {
 
       {/* Body */}
       <div style={{ padding: `${SPACE.xl}px` }}>
+
+        {/* SECTION 0 — EXECUTIVE SUMMARY */}
+        {incident.executive_summary?.ciso_headline && (
+          <div style={{
+            background: COLOR.surfaceTile1,
+            borderRadius: RADIUS.lg,
+            padding: SPACE.lg,
+            marginBottom: SPACE.lg,
+          }}>
+            <p style={{ ...TYPE.scale.bodyStrong, color: COLOR.onDark, margin: `0 0 ${SPACE.sm}px` }}>
+              {incident.executive_summary.ciso_headline}
+            </p>
+            <p style={{ ...TYPE.scale.body, color: COLOR.bodyMuted, margin: `0 0 ${SPACE.md}px` }}>
+              {incident.executive_summary.what_happened}
+            </p>
+            <div style={{ display: "flex", gap: SPACE.sm, marginBottom: SPACE.md, flexWrap: "wrap" }}>
+              {[
+                { label: "Business Impact",    value: incident.executive_summary.business_impact },
+                { label: "Immediate Priority", value: incident.executive_summary.immediate_priority },
+                { label: "Time to Detect",     value: incident.executive_summary.time_to_detect },
+              ].map(({ label, value }) => (
+                <div key={label} style={{
+                  flex: 1,
+                  minWidth: 160,
+                  background: "rgba(255,255,255,0.06)",
+                  borderRadius: RADIUS.sm,
+                  padding: SPACE.sm,
+                }}>
+                  <p style={{
+                    ...TYPE.scale.finePrint,
+                    color: COLOR.inkMuted48,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.08em",
+                    margin: `0 0 ${SPACE.xxs}px`,
+                  }}>
+                    {label}
+                  </p>
+                  <p style={{ ...TYPE.scale.caption, color: COLOR.onDark, margin: 0 }}>
+                    {value}
+                  </p>
+                </div>
+              ))}
+            </div>
+            {incident.executive_summary.recommended_communications?.length > 0 && (
+              <div>
+                <p style={{
+                  ...TYPE.scale.finePrint,
+                  color: COLOR.inkMuted48,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.08em",
+                  margin: `0 0 ${SPACE.xxs}px`,
+                }}>
+                  Notify Immediately
+                </p>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: SPACE.xxs }}>
+                  {incident.executive_summary.recommended_communications.map(team => (
+                    <span key={team} style={{
+                      ...TYPE.scale.caption,
+                      color: COLOR.primaryOnDark,
+                      background: "rgba(41,151,255,0.15)",
+                      borderRadius: RADIUS.pill,
+                      padding: "3px 10px",
+                    }}>
+                      {team}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Threat actor */}
         {incident.threat_actor && (
@@ -355,6 +427,9 @@ export default function IncidentDetail({ incident }) {
             </div>
           </Section>
         )}
+
+        {/* SECTION 9 — CHAT */}
+        <IncidentChat incident={incident} />
       </div>
     </div>
   );

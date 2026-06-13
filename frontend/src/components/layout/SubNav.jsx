@@ -1,10 +1,21 @@
 import { COLOR, TYPE, SPACE, RADIUS } from "../../constants/tokens.js";
 import Button from "../ui/Button.jsx";
 
-/** @param {{ status: string, alertCount: number, incidentCount: number, onRun: () => void }} props */
-export default function SubNav({ status, alertCount, incidentCount, onRun }) {
-  const isRunning = status === "running";
-  const isDone    = status === "done";
+/**
+ * @param {{
+ *   status: string,
+ *   alertCount: number,
+ *   incidentCount: number,
+ *   isLive: boolean,
+ *   onRun: () => void,
+ *   onLive: () => void,
+ *   onReset: () => void,
+ * }} props
+ */
+export default function SubNav({ status, alertCount, incidentCount, isLive, onRun, onLive, onReset }) {
+  const phase     = status === "done" ? "complete" : status;
+  const isRunning = phase === "running";
+  const isDone    = phase === "complete";
 
   return (
     <div
@@ -23,7 +34,7 @@ export default function SubNav({ status, alertCount, incidentCount, onRun }) {
         padding: `0 ${SPACE.xl}px`,
       }}
     >
-      {/* Left: brand name + live status chips */}
+      {/* Left: brand name + status chips */}
       <div style={{ display: "flex", alignItems: "center", gap: SPACE.lg }}>
         <span style={{ ...TYPE.scale.tagline, color: COLOR.ink }}>
           Security Operations Center
@@ -39,10 +50,71 @@ export default function SubNav({ status, alertCount, incidentCount, onRun }) {
         </div>
       </div>
 
-      {/* Right: Run Analysis CTA */}
-      <Button variant="primary" size="default" onClick={onRun} disabled={isRunning}>
-        {isRunning ? "Analyzing…" : isDone ? "Re-run Analysis" : "Run Analysis"}
-      </Button>
+      {/* Right: button group */}
+      <div style={{ display: "flex", gap: SPACE.xs, alignItems: "center" }}>
+        {phase === "idle" && !isLive && (
+          <>
+            <button
+              onClick={onLive}
+              style={{
+                ...TYPE.scale.caption,
+                color: COLOR.inkMuted80,
+                background: COLOR.canvasParchment,
+                border: `1px solid ${COLOR.hairline}`,
+                borderRadius: RADIUS.pill,
+                padding: "8px 16px",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: SPACE.xxs,
+              }}
+            >
+              <span style={{ fontSize: 10, color: "#ff3b30" }}>●</span>
+              Live Mode
+            </button>
+            <Button variant="primary" onClick={onRun}>
+              Run AI Analysis
+            </Button>
+          </>
+        )}
+
+        {isLive && (
+          <div style={{ display: "flex", alignItems: "center", gap: SPACE.sm }}>
+            <span style={{
+              display: "inline-block",
+              width: 8, height: 8,
+              borderRadius: "50%",
+              background: "#ff3b30",
+              animation: "pulse 1s ease-in-out infinite",
+            }} />
+            <span style={{ ...TYPE.scale.caption, color: COLOR.inkMuted80 }}>
+              Live feed — waiting for critical alert…
+            </span>
+            <button
+              onClick={onReset}
+              style={{
+                ...TYPE.scale.caption,
+                color: COLOR.inkMuted48,
+                background: "none",
+                border: `1px solid ${COLOR.hairline}`,
+                borderRadius: RADIUS.pill,
+                padding: "6px 12px",
+                cursor: "pointer",
+              }}
+            >
+              Stop
+            </button>
+          </div>
+        )}
+
+        {isRunning && (
+          <Button variant="primary" disabled>Agents running…</Button>
+        )}
+
+        {isDone && (
+          <Button variant="ghost" onClick={onReset}>Re-Analyse</Button>
+        )}
+      </div>
     </div>
   );
 }
@@ -75,8 +147,7 @@ function Chip({ children, accent, success, running }) {
       {running && (
         <span
           style={{
-            width: 5,
-            height: 5,
+            width: 5, height: 5,
             borderRadius: "50%",
             background: COLOR.primary,
             display: "inline-block",

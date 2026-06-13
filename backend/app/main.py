@@ -8,6 +8,7 @@ from fastapi.responses import FileResponse
 
 from app.config import settings
 from app.api.routes.analysis import router as analysis_router
+from app.api.routes.chat import router as chat_router
 from app.api.routes.health import router as health_router
 
 logging.basicConfig(
@@ -34,6 +35,7 @@ def create_app() -> FastAPI:
     )
 
     app.include_router(analysis_router)
+    app.include_router(chat_router)
     app.include_router(health_router)
 
     # Serve built frontend if dist/ exists

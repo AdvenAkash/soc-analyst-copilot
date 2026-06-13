@@ -48,3 +48,4 @@ class Incident(BaseModel):
     immediate_actions: list[ImmediateAction] = []
     investigation_steps: list[str] = []
     long_term_fix: str = ""
+    executive_summary: dict = {}

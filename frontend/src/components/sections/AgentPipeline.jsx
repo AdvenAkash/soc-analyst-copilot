@@ -3,17 +3,18 @@ import AgentCard from "../ui/AgentCard.jsx";
 import SectionLabel from "../ui/SectionLabel.jsx";
 
 const AGENT_META = [
-  { key: "triage",        step: 1, title: "Triage Agent",        desc: "Groups correlated alerts, dismisses false positives" },
-  { key: "threat_intel",  step: 2, title: "Threat Intel Agent",  desc: "Maps MITRE ATT&CK techniques, enriches IOCs" },
-  { key: "investigation", step: 3, title: "Investigation Agent", desc: "Reconstructs kill-chain timeline" },
-  { key: "playbook",      step: 4, title: "Playbook Agent",      desc: "Generates prioritized remediation steps" },
+  { key: "triage",       step: 1, title: "Triage Agent",            desc: "Groups correlated alerts, dismisses false positives" },
+  { key: "threat_intel", step: 2, title: "Threat Intel Agent",      desc: "Maps MITRE ATT&CK techniques, enriches IOCs" },
+  { key: "investigation",step: 3, title: "Investigation Agent",     desc: "Reconstructs kill-chain timeline" },
+  { key: "playbook",     step: 4, title: "Playbook Agent",          desc: "Generates prioritized remediation steps" },
+  { key: "exec_summary", step: 5, title: "Executive Summary Agent", desc: "Writes a plain-English CISO briefing" },
 ];
 
-const CONNECTOR_LABELS = ["→", "→", "→"];
+const TOTAL = AGENT_META.length;
 
 /** @param {{ agents: Array<{key:string,status:string,message:string}> }} props */
 export default function AgentPipeline({ agents }) {
-  const agentMap = Object.fromEntries(agents.map((a) => [a.key, a]));
+  const agentMap  = Object.fromEntries(agents.map((a) => [a.key, a]));
   const doneCount = agents.filter((a) => a.status === "done").length;
 
   return (
@@ -48,64 +49,41 @@ export default function AgentPipeline({ agents }) {
           >
             <div
               style={{
-                width: `${(doneCount / 4) * 100}%`,
+                width: `${(doneCount / TOTAL) * 100}%`,
                 height: "100%",
-                background: doneCount === 4 ? COLOR.statusDone : COLOR.primary,
+                background: doneCount === TOTAL ? COLOR.statusDone : COLOR.primary,
                 borderRadius: RADIUS.pill,
                 transition: "width 0.4s ease",
               }}
             />
           </div>
           <span style={{ ...TYPE.scale.finePrint, color: "rgba(255,255,255,0.38)", minWidth: 28 }}>
-            {doneCount}/4
+            {doneCount}/{TOTAL}
           </span>
         </div>
       </div>
 
-      {/* Pipeline: 4 cards in a row with connectors */}
+      {/* Pipeline: 5 cards in a flex-wrap row */}
       <div
         style={{
-          display: "grid",
-          gridTemplateColumns: "1fr auto 1fr auto 1fr auto 1fr",
-          gap: 0,
-          alignItems: "stretch",
+          display: "flex",
+          flexWrap: "wrap",
+          gap: SPACE.sm,
         }}
       >
-        {AGENT_META.map((meta, idx) => {
+        {AGENT_META.map((meta) => {
           const agentState = agentMap[meta.key] || { status: "waiting", message: "" };
-          return [
-            <AgentCard
-              key={meta.key}
-              title={meta.title}
-              desc={meta.desc}
-              status={agentState.status}
-              message={agentState.message}
-              step={meta.step}
-            />,
-            idx < 3 ? (
-              <div
-                key={`arrow-${idx}`}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  width: 28,
-                }}
-              >
-                <span
-                  style={{
-                    ...TYPE.scale.caption,
-                    color: agentState.status === "done"
-                      ? COLOR.statusDone
-                      : "rgba(255,255,255,0.18)",
-                    transition: "color 0.3s",
-                  }}
-                >
-                  →
-                </span>
-              </div>
-            ) : null,
-          ];
+          return (
+            <div key={meta.key} style={{ flex: "1 1 180px", maxWidth: 220 }}>
+              <AgentCard
+                title={meta.title}
+                desc={meta.desc}
+                status={agentState.status}
+                message={agentState.message}
+                step={meta.step}
+              />
+            </div>
+          );
         })}
       </div>
     </section>

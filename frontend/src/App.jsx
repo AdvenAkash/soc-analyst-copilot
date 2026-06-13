@@ -4,6 +4,7 @@ import SubNav from "./components/layout/SubNav.jsx";
 import HeroSection from "./components/sections/HeroSection.jsx";
 import StatsStrip from "./components/sections/StatsStrip.jsx";
 import AgentPipeline from "./components/sections/AgentPipeline.jsx";
+import MetricsDashboard from "./components/sections/MetricsDashboard.jsx";
 import AlertFeed from "./components/alerts/AlertFeed.jsx";
 import IncidentQueue from "./components/incidents/IncidentQueue.jsx";
 import IncidentDetail from "./components/incidents/IncidentDetail.jsx";
@@ -11,18 +12,47 @@ import StickyBar from "./components/layout/StickyBar.jsx";
 import Button from "./components/ui/Button.jsx";
 import Badge from "./components/ui/Badge.jsx";
 import { useAnalysis } from "./hooks/useAnalysis.js";
+import { useLiveAlerts } from "./hooks/useLiveAlerts.js";
 import { SAMPLE_ALERTS } from "./constants/alerts.js";
 import { COLOR, SPACE, TYPE, RADIUS } from "./constants/tokens.js";
 
 export default function App() {
-  const { state, startAnalysis } = useAnalysis();
+  const { state, startAnalysis, reset } = useAnalysis();
   const [selectedIncident, setSelectedIncident] = useState(null);
   const [activeTab, setActiveTab] = useState("dashboard");
+
+  const fpIds    = state.incidents.flatMap((i) => i.fp_ids || []);
+  const phase    = state.status === "done" ? "complete" : state.status;
+
+  const {
+    visibleAlerts,
+    isLive,
+    newestAlertId,
+    criticalSeen,
+    startLive,
+    stopLive,
+  } = useLiveAlerts({
+    onCriticalDetected: (alerts) => {
+      setSelectedIncident(null);
+      startAnalysis(alerts);
+      setActiveTab("dashboard");
+    },
+  });
+
+  const feedAlerts = isLive || visibleAlerts.length > 0
+    ? visibleAlerts
+    : SAMPLE_ALERTS;
 
   const handleRun = () => {
     setSelectedIncident(null);
     startAnalysis(SAMPLE_ALERTS);
     setActiveTab("dashboard");
+  };
+
+  const handleReset = () => {
+    stopLive();
+    reset();
+    setSelectedIncident(null);
   };
 
   return (
@@ -32,7 +62,10 @@ export default function App() {
         status={state.status}
         alertCount={SAMPLE_ALERTS.length}
         incidentCount={state.incidents.length}
+        isLive={isLive}
         onRun={handleRun}
+        onLive={startLive}
+        onReset={handleReset}
       />
 
       <main style={{ maxWidth: 1440, margin: "0 auto", padding: `0 ${SPACE.lg}px` }}>
@@ -44,7 +77,7 @@ export default function App() {
             <StatsStrip
               alertCount={SAMPLE_ALERTS.length}
               incidentCount={state.incidents.length}
-              fpCount={state.incidents.reduce((n, i) => n + (i.fp_ids?.length || 0), 0)}
+              fpCount={fpIds.length}
               agentsDone={state.agentResults.filter((a) => a.status === "done").length}
             />
             <AgentPipeline agents={state.agentResults} />
@@ -59,7 +92,14 @@ export default function App() {
               }}
             >
               <div style={{ display: "flex", flexDirection: "column", gap: SPACE.sm }}>
-                <AlertFeed alerts={SAMPLE_ALERTS} activeIds={state.activeAlertIds} />
+                <AlertFeed
+                  alerts={feedAlerts}
+                  activeIds={state.activeAlertIds}
+                  fpIds={fpIds}
+                  newestAlertId={newestAlertId}
+                  isLive={isLive}
+                  criticalSeen={criticalSeen}
+                />
                 <IncidentQueue
                   incidents={state.incidents}
                   selected={selectedIncident}
@@ -110,8 +150,12 @@ export default function App() {
             />
             <div style={{ marginTop: SPACE.lg }}>
               <AlertFeed
-                alerts={SAMPLE_ALERTS}
+                alerts={feedAlerts}
                 activeIds={state.activeAlertIds}
+                fpIds={fpIds}
+                newestAlertId={newestAlertId}
+                isLive={isLive}
+                criticalSeen={criticalSeen}
                 expanded
               />
             </div>
@@ -139,6 +183,24 @@ export default function App() {
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {/* ── METRICS ───────────────────────────────────────────── */}
+        {activeTab === "metrics" && (
+          <div style={{ marginTop: SPACE.lg, marginBottom: 120 }}>
+            <PageHeader
+              title="SOC Metrics"
+              sub="Performance analytics and MITRE ATT&CK coverage"
+              onRun={handleRun}
+              status={state.status}
+            />
+            <MetricsDashboard
+              incidents={state.incidents}
+              fpIds={fpIds}
+              totalAlerts={SAMPLE_ALERTS.length}
+              phase={phase}
+            />
           </div>
         )}
 

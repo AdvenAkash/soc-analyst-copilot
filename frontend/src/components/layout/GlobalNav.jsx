@@ -5,6 +5,7 @@ const NAV_ITEMS = [
   { key: "incidents", label: "Incidents" },
   { key: "alerts",    label: "Alerts" },
   { key: "playbooks", label: "Playbooks" },
+  { key: "metrics",   label: "Metrics" },
   { key: "settings",  label: "Settings" },
 ];
 

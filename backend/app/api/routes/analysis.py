@@ -10,6 +10,7 @@ from app.agents.triage_agent import TriageAgent
 from app.agents.threat_intel_agent import ThreatIntelAgent
 from app.agents.investigation_agent import InvestigationAgent
 from app.agents.playbook_agent import PlaybookAgent
+from app.agents.executive_summary_agent import ExecutiveSummaryAgent
 from app.api.dependencies import get_llm_service
 from app.schemas.alert import Alert
 from app.services.llm_service import LLMService
@@ -28,6 +29,7 @@ async def _run_pipeline(
     triage_result: dict = {}
     enriched_result: dict = {}
     invest_result: dict = {}
+    exec_result: dict = {}
 
     yield _sse({"type":"agent_start","agent":"triage",
                 "message":f"Analyzing {len(alerts)} alerts, identifying attack patterns..."})
@@ -85,17 +87,48 @@ async def _run_pipeline(
         yield _sse({"type":"error","message":str(exc)})
         return
 
-    final_incidents = _merge_results(triage_result, enriched_result, invest_result, playbook_result)
+    # ── AGENT 5: EXECUTIVE SUMMARY ────────────────────────────────────────────
+    yield _sse({"type":"agent_start","agent":"exec_summary",
+                "message":"Generating CISO executive briefing..."})
+    try:
+        partial_incidents = _merge_results(
+            triage_result, enriched_result, invest_result, playbook_result
+        )
+        exec_result = await ExecutiveSummaryAgent(llm).run(incidents=partial_incidents)
+        yield _sse({
+            "type": "agent_done", "agent": "exec_summary",
+            "data": exec_result,
+            "message": "Executive briefing ready",
+        })
+    except Exception as exc:
+        logger.warning("ExecSummary agent error: %s", exc)
+        exec_result = ExecutiveSummaryAgent(llm).fallback_result()
+        yield _sse({
+            "type": "agent_done", "agent": "exec_summary",
+            "data": exec_result,
+            "message": "Executive briefing ready (fallback)",
+        })
+
+    final_incidents = _merge_results(
+        triage_result, enriched_result, invest_result, playbook_result, exec_result
+    )
     yield _sse({"type":"pipeline_done","incidents":final_incidents})
 
 
-def _merge_results(triage: dict, threat_intel: dict, investigation: dict, playbook: dict) -> list[dict]:
+def _merge_results(
+    triage: dict,
+    threat_intel: dict,
+    investigation: dict,
+    playbook: dict,
+    exec_summary: dict = {},
+) -> list[dict]:
     merged = []
     for inc in triage.get("incidents", []):
         iid = inc["id"]
         threat = next((e for e in threat_intel.get("enriched", []) if e.get("id") == iid), {})
         invest = next((i for i in investigation.get("investigations", []) if i.get("id") == iid), {})
-        play = next((p for p in playbook.get("playbooks", []) if p.get("id") == iid), {})
+        play   = next((p for p in playbook.get("playbooks", []) if p.get("id") == iid), {})
+        exe    = next((s for s in exec_summary.get("summaries", []) if s.get("id") == iid), {})
         merged.append({
             **inc,
             "mitre_tactics":       threat.get("mitre_tactics", []),
@@ -110,6 +143,7 @@ def _merge_results(triage: dict, threat_intel: dict, investigation: dict, playbo
             "immediate_actions":   play.get("immediate_actions", []),
             "investigation_steps": play.get("investigation_steps", []),
             "long_term_fix":       play.get("long_term_fix", ""),
+            "executive_summary":   exe,
         })
     return merged
 

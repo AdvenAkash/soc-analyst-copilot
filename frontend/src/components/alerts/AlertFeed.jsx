@@ -10,8 +10,25 @@ const SEV_BORDER = {
   LOW:      COLOR.lowColor,
 };
 
-/** @param {{ alerts: any[], activeIds: string[], expanded?: boolean }} props */
-export default function AlertFeed({ alerts, activeIds, expanded }) {
+const SEV_FLASH = {
+  CRITICAL: "rgba(255,59,48,0.28)",
+  HIGH:     "rgba(255,149,0,0.28)",
+  MEDIUM:   "rgba(255,214,10,0.28)",
+  LOW:      "rgba(50,215,75,0.28)",
+};
+
+/**
+ * @param {{
+ *   alerts: object[],
+ *   activeIds: string[],
+ *   fpIds?: string[],
+ *   expanded?: boolean,
+ *   newestAlertId?: string|null,
+ *   isLive?: boolean,
+ *   criticalSeen?: boolean,
+ * }} props
+ */
+export default function AlertFeed({ alerts, activeIds, fpIds = [], expanded, newestAlertId, isLive, criticalSeen }) {
   const endRef = useRef(null);
 
   useEffect(() => {
@@ -34,6 +51,36 @@ export default function AlertFeed({ alerts, activeIds, expanded }) {
         </span>
       </div>
 
+      {/* Critical detection banner */}
+      {criticalSeen && (
+        <div style={{
+          background: "rgba(255,59,48,0.10)",
+          border: `1px solid rgba(255,59,48,0.30)`,
+          borderRadius: RADIUS.sm,
+          padding: `${SPACE.xs}px ${SPACE.sm}px`,
+          marginBottom: SPACE.sm,
+          ...TYPE.scale.captionStrong,
+          color: "#ff3b30",
+        }}>
+          🚨 Critical threat detected — AI pipeline auto-triggered
+        </div>
+      )}
+
+      {/* Live counter */}
+      {isLive && (
+        <div style={{
+          ...TYPE.scale.caption,
+          color: "#ff3b30",
+          marginBottom: SPACE.sm,
+          display: "flex",
+          alignItems: "center",
+          gap: SPACE.xxs,
+        }}>
+          <span style={{ fontSize: 10 }}>●</span>
+          {alerts.length} alerts collected…
+        </div>
+      )}
+
       <div
         style={{
           maxHeight: expanded ? "none" : 340,
@@ -44,7 +91,9 @@ export default function AlertFeed({ alerts, activeIds, expanded }) {
         }}
       >
         {alerts.map((alert) => {
-          const isActive   = activeIds.includes(alert.id);
+          const isActive    = activeIds.includes(alert.id);
+          const isFp        = fpIds.includes(alert.id);
+          const isNewest    = alert.id === newestAlertId;
           const borderColor = SEV_BORDER[alert.sev] || COLOR.inkMuted48;
 
           return (
@@ -59,8 +108,12 @@ export default function AlertFeed({ alerts, activeIds, expanded }) {
                 borderRadius: RADIUS.xs,
                 background: isActive ? "rgba(0,102,204,0.05)" : "transparent",
                 borderLeft: `2px solid ${isActive ? COLOR.primary : borderColor}`,
-                opacity: isActive ? 1 : 0.72,
+                opacity: isFp ? 0.30 : isActive ? 1 : 0.72,
                 transition: "background 0.2s, opacity 0.2s",
+                ...(isNewest ? {
+                  animation: "alertSlideIn 0.3s ease-out, alertFlash 0.7s ease-out",
+                  "--flash-color": SEV_FLASH[alert.sev] || "rgba(255,214,10,0.25)",
+                } : {}),
               }}
             >
               {/* Time */}

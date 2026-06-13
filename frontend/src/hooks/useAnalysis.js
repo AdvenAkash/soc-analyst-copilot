@@ -2,13 +2,14 @@ import { useReducer, useCallback } from "react";
 import { createAnalysisStream } from "../services/api.js";
 import { FALLBACK_INCIDENTS } from "../constants/fallback.js";
 
-const AGENTS = ["triage", "threat_intel", "investigation", "playbook"];
+const AGENTS = ["triage", "threat_intel", "investigation", "playbook", "exec_summary"];
 
 const AGENT_LABELS = {
-  triage:       "Triage Agent",
-  threat_intel: "Threat Intel Agent",
-  investigation:"Investigation Agent",
-  playbook:     "Playbook Agent",
+  triage:        "Triage Agent",
+  threat_intel:  "Threat Intel Agent",
+  investigation: "Investigation Agent",
+  playbook:      "Playbook Agent",
+  exec_summary:  "Executive Summary Agent",
 };
 
 const initialAgents = AGENTS.map((key) => ({
@@ -71,6 +72,9 @@ function reducer(state, action) {
         ),
       };
 
+    case "RESET":
+      return initialState;
+
     default:
       return state;
   }
@@ -99,5 +103,7 @@ export function useAnalysis() {
     );
   }, []);
 
-  return { state, dispatch, startAnalysis };
+  const reset = useCallback(() => dispatch({ type: "RESET" }), []);
+
+  return { state, dispatch, startAnalysis, reset };
 }
