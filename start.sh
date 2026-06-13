@@ -70,6 +70,11 @@ ok "Code up to date."
 # ─────────────────────────────────────────────────────────────
 log "Checking system dependencies…"
 
+if ! command -v zstd &>/dev/null || ! command -v node &>/dev/null; then
+  log "Updating apt package index…"
+  apt-get update -qq
+fi
+
 if ! command -v zstd &>/dev/null; then
   log "Installing zstd…"
   apt-get install -y zstd -qq

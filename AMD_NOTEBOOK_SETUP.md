@@ -85,6 +85,7 @@ Use this if `start.sh` fails for any reason.
 ### Terminal 1 — Ollama
 
 ```bash
+apt-get update
 apt-get install -y zstd
 cd /workspace/shared/soc-analyst-copilot
 chmod +x scripts/start_ollama.sh
@@ -157,6 +158,7 @@ Open: `https://notebooks.amd.com/<YOUR-SESSION-ID>/proxy/5173/`
 
 | Problem | Cause | Fix |
 |---------|-------|-----|
+| `E: Unable to locate package zstd` | Stale apt package index | `apt-get update` then retry — `start.sh` does this automatically |
 | `E: Unable to locate package nodejs` | Default apt repo has no Node | `start.sh` uses NodeSource automatically |
 | Blank page in browser | Wrong session ID in build | Rebuild with correct `VITE_BASE_PATH` |
 | Run Analysis does nothing | Wrong `VITE_API_BASE_URL` at build | Rebuild with correct `VITE_API_BASE_URL` |
