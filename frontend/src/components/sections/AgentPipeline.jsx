@@ -68,7 +68,7 @@ export default function AgentPipeline({ agents }) {
           display: "grid",
           gridTemplateColumns: "1fr auto 1fr auto 1fr auto 1fr",
           gap: 0,
-          alignItems: "center",
+          alignItems: "stretch",
         }}
       >
         {AGENT_META.map((meta, idx) => {
@@ -90,7 +90,6 @@ export default function AgentPipeline({ agents }) {
                   alignItems: "center",
                   justifyContent: "center",
                   width: 28,
-                  paddingTop: 2,
                 }}
               >
                 <span
