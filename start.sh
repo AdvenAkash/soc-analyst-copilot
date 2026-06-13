@@ -77,7 +77,13 @@ fi
 
 if ! command -v zstd &>/dev/null; then
   log "Installing zstd…"
-  apt-get install -y zstd -qq
+  # Try main repo first; if unavailable, enable universe and retry; if still missing, skip.
+  if ! apt-get install -y zstd -qq 2>/dev/null; then
+    apt-get install -y software-properties-common -qq 2>/dev/null || true
+    add-apt-repository -y universe 2>/dev/null || true
+    apt-get update -qq 2>/dev/null || true
+    apt-get install -y zstd -qq 2>/dev/null || warn "zstd unavailable — continuing without it"
+  fi
 fi
 
 if ! command -v node &>/dev/null; then
