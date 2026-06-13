@@ -119,17 +119,35 @@ export default function IncidentDetail({ incident }) {
         {/* SECTION 0 — EXECUTIVE SUMMARY */}
         {incident.executive_summary?.ciso_headline && (
           <div style={{
-            background: COLOR.surfaceTile1,
+            background: COLOR.canvasParchment,
+            border: `1px solid ${COLOR.hairline}`,
             borderRadius: RADIUS.lg,
             padding: SPACE.lg,
             marginBottom: SPACE.lg,
           }}>
-            <p style={{ ...TYPE.scale.bodyStrong, color: COLOR.onDark, margin: `0 0 ${SPACE.sm}px` }}>
+            {/* Label */}
+            <p style={{
+              ...TYPE.scale.finePrint,
+              color: COLOR.inkMuted48,
+              textTransform: "uppercase",
+              letterSpacing: "0.09em",
+              fontWeight: 600,
+              margin: `0 0 ${SPACE.xs}px`,
+            }}>
+              Executive Briefing
+            </p>
+
+            {/* Headline */}
+            <p style={{ ...TYPE.scale.bodyStrong, color: COLOR.ink, margin: `0 0 ${SPACE.sm}px` }}>
               {incident.executive_summary.ciso_headline}
             </p>
-            <p style={{ ...TYPE.scale.body, color: COLOR.bodyMuted, margin: `0 0 ${SPACE.md}px` }}>
+
+            {/* What happened */}
+            <p style={{ ...TYPE.scale.body, color: COLOR.inkMuted48, margin: `0 0 ${SPACE.md}px` }}>
               {incident.executive_summary.what_happened}
             </p>
+
+            {/* 3-column stat row */}
             <div style={{ display: "flex", gap: SPACE.sm, marginBottom: SPACE.md, flexWrap: "wrap" }}>
               {[
                 { label: "Business Impact",    value: incident.executive_summary.business_impact },
@@ -139,7 +157,8 @@ export default function IncidentDetail({ incident }) {
                 <div key={label} style={{
                   flex: 1,
                   minWidth: 160,
-                  background: "rgba(255,255,255,0.06)",
+                  background: COLOR.canvas,
+                  border: `1px solid ${COLOR.hairline}`,
                   borderRadius: RADIUS.sm,
                   padding: SPACE.sm,
                 }}>
@@ -152,12 +171,14 @@ export default function IncidentDetail({ incident }) {
                   }}>
                     {label}
                   </p>
-                  <p style={{ ...TYPE.scale.caption, color: COLOR.onDark, margin: 0 }}>
+                  <p style={{ ...TYPE.scale.caption, color: COLOR.ink, margin: 0 }}>
                     {value}
                   </p>
                 </div>
               ))}
             </div>
+
+            {/* Notify row */}
             {incident.executive_summary.recommended_communications?.length > 0 && (
               <div>
                 <p style={{
@@ -173,8 +194,9 @@ export default function IncidentDetail({ incident }) {
                   {incident.executive_summary.recommended_communications.map(team => (
                     <span key={team} style={{
                       ...TYPE.scale.caption,
-                      color: COLOR.primaryOnDark,
-                      background: "rgba(41,151,255,0.15)",
+                      color: COLOR.primary,
+                      background: "rgba(0,102,204,0.08)",
+                      border: `1px solid rgba(0,102,204,0.18)`,
                       borderRadius: RADIUS.pill,
                       padding: "3px 10px",
                     }}>
