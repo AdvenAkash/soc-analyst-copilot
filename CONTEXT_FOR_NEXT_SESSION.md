@@ -9,25 +9,65 @@
 **Name:** SOC Analyst Copilot
 **Repo:** https://github.com/AdvenAkash/soc-analyst-copilot
 **Local path:** `c:\2026 Learn\SOC_Analyst\soc-copilot\`
-**Live on:** `https://notebooks.amd.com/jupyter-hack-team-2652-260611211844-791ed408/proxy/8000/`
+**Live on:** `https://notebooks.amd.com/<YOUR-SESSION-ID>/proxy/5173/`
 **Purpose:** AI-powered SOC dashboard — converts 500+ SIEM alerts into ranked, actionable security incidents using a 4-agent LLM pipeline
 **Status:** ✅ Fully working on AMD notebooks.amd.com (MI300X GPU, Ollama + Llama 3.1 8B)
 
 ---
 
-## Current State (as of last session)
+## Current State (as of 2026-06-14)
 
 ### What works
-- ✅ Frontend served by FastAPI on port 8000 (single-port deployment)
-- ✅ Nav tabs wired — Dashboard, Incidents, Alerts, Playbooks, Settings all functional
-- ✅ Ollama running with `HSA_OVERRIDE_GFX_VERSION=9.4.2` on AMD MI300X
-- ✅ Backend health API confirmed working
+- ✅ 4-agent pipeline confirmed running end-to-end with real LLM on MI300X
+- ✅ Ollama running with `HSA_OVERRIDE_GFX_VERSION=9.4.2` — ISA error resolved
+- ✅ Frontend served on port 5173 via `python3 -m http.server` (separate from backend)
+- ✅ Backend FastAPI on port 8000, health endpoint confirmed: `{"status":"ok","llm_backend":"ollama","model":"llama3.1:8b"}`
+- ✅ API URL routing fixed — `api.js` uses `VITE_API_BASE_URL` env var for correct JupyterHub proxy path
+- ✅ Production-grade Apple Design System UI overhaul complete
+- ✅ `start.sh` one-command startup — auto-detects session ID, starts all 3 services
+- ✅ Nav tabs — Dashboard, Incidents, Alerts, Playbooks, Settings all functional
 - ✅ Fallback data works when LLM is down
-- ✅ All 4 agent pipeline: Triage → Threat Intel → Investigation → Playbook
 
 ### Pending / In Progress
-- ⚠️ Agents hitting LLM but ISA error on MI300X — needs `HSA_OVERRIDE_GFX_VERSION=9.4.2` + Ollama restart to confirm
-- ⚠️ API URL routing via `import.meta.env.BASE_URL` — committed, needs rebuild on server
+- [ ] File upload button — drag-and-drop JSON alert file → `startAnalysis()`
+- [ ] Real SIEM connector (Splunk/Elastic → POST to `/api/analysis/run`)
+- [ ] Persist incidents — SQLite via SQLModel
+- [ ] Export incident report as PDF or JSON
+- [ ] Alert filtering by severity / host / rule
+
+---
+
+## Deployment Architecture (Current)
+
+**Two-port setup on JupyterHub:**
+
+| Service | Port | How |
+|---------|------|-----|
+| Backend (FastAPI) | 8000 | `uvicorn app.main:app --host 0.0.0.0 --port 8000` |
+| Frontend (React) | 5173 | `cd frontend/dist && python3 -m http.server 5173 --bind 0.0.0.0` |
+| LLM (Ollama) | 11434 | `./scripts/start_ollama.sh` |
+
+**Accessing via JupyterHub proxy:**
+- Frontend: `https://notebooks.amd.com/<SESSION-ID>/proxy/5173/`
+- Backend API: `https://notebooks.amd.com/<SESSION-ID>/proxy/8000/api/health`
+
+**One-command startup (recommended):**
+```bash
+cd /workspace/shared/soc-analyst-copilot
+git fetch origin && git reset --hard origin/main
+chmod +x start.sh
+./start.sh
+# Session ID auto-detected from JUPYTERHUB_SERVICE_PREFIX
+# Or pass it manually: ./start.sh jupyter-hack-team-XXXX
+```
+
+**Frontend rebuild required on every new session** (session ID changes each restart):
+```bash
+cd /workspace/shared/soc-analyst-copilot/frontend
+VITE_BASE_PATH=/<SESSION-ID>/proxy/5173/ \
+VITE_API_BASE_URL=https://notebooks.amd.com/<SESSION-ID>/proxy/8000 \
+npm run build
+```
 
 ---
 
@@ -36,15 +76,17 @@
 ```
 soc-copilot/
 ├── README.md
-├── GETTING_STARTED.md          ← full setup + JupyterHub deploy guide
+├── GETTING_STARTED.md          ← original setup guide
 ├── ARCHITECTURE.md             ← architecture + data flow diagrams
+├── AMD_NOTEBOOK_SETUP.md       ← AMD JupyterHub deployment guide (preferred)
 ├── CONTEXT_FOR_NEXT_SESSION.md ← this file
+├── start.sh                    ← one-command startup (auto-detects session ID)
 ├── .gitignore
 ├── docker-compose.yml
 │
 ├── scripts/
 │   ├── start_vllm.sh           ← AMD ROCm vLLM startup
-│   └── start_ollama.sh         ← Ollama startup (default GFX 9.4.2 for MI300X)
+│   └── start_ollama.sh         ← Ollama startup (sets GFX 9.4.2, pulls model)
 │
 ├── backend/
 │   ├── pyproject.toml
@@ -72,36 +114,41 @@ soc-copilot/
 │
 └── frontend/
     ├── package.json
-    ├── vite.config.js           ← base path via VITE_BASE_PATH env var; host: "0.0.0.0"
+    ├── vite.config.js           ← base path via VITE_BASE_PATH env var
     ├── .eslintrc.cjs
     ├── .prettierrc
-    ├── index.html
+    ├── index.html               ← global CSS: keyframes, scrollbar, font smoothing
     └── src/
         ├── main.jsx
-        ├── App.jsx              ← tab switching: Dashboard/Incidents/Alerts/Playbooks/Settings
+        ├── App.jsx              ← tab switching; PageHeader, PlaybookCard, SettingsPanel
         ├── constants/
-        │   ├── tokens.js        ← Apple Design System tokens
+        │   ├── tokens.js        ← full Apple Design System tokens (colors, type, spacing)
         │   ├── alerts.js        ← SAMPLE_ALERTS[20] full APT kill-chain
         │   └── fallback.js      ← FALLBACK_INCIDENTS (no LLM needed)
         ├── utils/
         │   ├── severity.js
         │   └── format.js
-        ├── services/api.js      ← uses import.meta.env.BASE_URL for correct proxy path
+        ├── services/api.js      ← VITE_API_BASE_URL || BASE_URL for proxy path
         ├── hooks/
         │   ├── useAnalysis.js
         │   └── useScrollFeed.js
         └── components/
-            ├── layout/GlobalNav.jsx    ← clickable tabs, active tab highlighted
-            ├── layout/SubNav.jsx
-            ├── layout/StickyBar.jsx
-            ├── sections/HeroSection.jsx
-            ├── sections/StatsStrip.jsx
-            ├── sections/AgentPipeline.jsx
-            ├── alerts/AlertFeed.jsx
+            ├── layout/GlobalNav.jsx    ← true black bg, shield icon, Sky Blue active underline
+            ├── layout/SubNav.jsx       ← tagline typography, live status chips, pill CTA
+            ├── layout/StickyBar.jsx    ← green checkmark, severity breakdown, scroll hint
+            ├── sections/HeroSection.jsx  ← dark tile, 56px headline, two pill CTAs
+            ├── sections/StatsStrip.jsx   ← color-coded metrics
+            ├── sections/AgentPipeline.jsx ← horizontal 4-card layout, → connectors, progress bar
+            ├── alerts/AlertFeed.jsx      ← severity-colored left borders on all rows
             ├── incidents/IncidentQueue.jsx
-            ├── incidents/IncidentCard.jsx
-            ├── incidents/IncidentDetail.jsx
-            └── ui/ (AgentCard, Badge, Button, SectionLabel, Timeline)
+            ├── incidents/IncidentCard.jsx  ← left-border selection (not full-blue bg)
+            ├── incidents/IncidentDetail.jsx ← severity header band, IOC pills, MITRE chips
+            └── ui/
+                ├── AgentCard.jsx   ← numbered step circles, checkmark when done, pulseRing
+                ├── Badge.jsx       ← pill shape (RADIUS.pill)
+                ├── Button.jsx      ← true Apple pill (11px 22px, 17px body type), ghost-dark variant
+                ├── SectionLabel.jsx
+                └── Timeline.jsx
 ```
 
 ---
@@ -111,11 +158,11 @@ soc-copilot/
 | Layer | Technology |
 |-------|-----------|
 | GPU | AMD MI300X (~192 GB VRAM) on notebooks.amd.com |
-| LLM Server | Ollama (Llama 3.1 8B, Q4_K_M GGUF) |
+| LLM Server | Ollama (Llama 3.1 8B) |
 | ROCm GFX | `HSA_OVERRIDE_GFX_VERSION=9.4.2` (MI300X = gfx942) |
 | Backend | Python 3.11, FastAPI 0.111+, httpx, Pydantic v2 |
 | Frontend | React 18.3, Vite 5.3, inline Apple Design tokens |
-| Deployment | FastAPI serves both API + static frontend on port 8000 |
+| Deployment | Frontend: port 5173 · Backend: port 8000 · Ollama: 11434 |
 | State | useReducer (pipeline) + useState (UI tabs) |
 | Streaming | SSE via fetch + ReadableStream (POST-compatible) |
 
@@ -123,60 +170,31 @@ soc-copilot/
 
 ## Key Architecture Decisions
 
-1. **Single-port deployment** — FastAPI mounts `frontend/dist/` as static files. No separate frontend server needed on JupyterHub. Everything on port 8000.
-2. **API URL via `BASE_URL`** — `api.js` uses `import.meta.env.BASE_URL` (Vite's base path) so API calls include the JupyterHub proxy prefix automatically.
+1. **Two-port deployment** — Frontend on 5173 (`python3 -m http.server`), Backend on 8000 (uvicorn). Both accessible via JupyterHub `/proxy/<port>/`.
+2. **API URL via env vars** — `api.js` reads `VITE_API_BASE_URL` (set at build time) so API calls hit the correct backend proxy URL regardless of port.
 3. **Tab-based navigation** — No React Router. `activeTab` state in `App.jsx` switches between 5 views.
 4. **Graceful fallback** — Every agent has `fallback_result()`. Pipeline always completes even if LLM is down.
 5. **Inline styles only** — All values from `constants/tokens.js`. No CSS files, no Tailwind.
+6. **One-command startup** — `start.sh` auto-detects session ID from `JUPYTERHUB_SERVICE_PREFIX`, installs missing deps, health-checks each service before starting the next.
 
 ---
 
 ## Environment Variables (backend/.env)
 
 ```ini
-LLM_BACKEND=ollama                    # "vllm" or "ollama"
+LLM_BACKEND=ollama
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_MODEL=llama3.1:8b
+OLLAMA_TIMEOUT_SECONDS=120
 VLLM_BASE_URL=http://localhost:8001/v1
 VLLM_MODEL=meta-llama/Llama-3.1-8B-Instruct
 VLLM_API_KEY=EMPTY
 VLLM_TIMEOUT_SECONDS=120
-OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_MODEL=llama3.1:8b
-OLLAMA_TIMEOUT_SECONDS=120
 API_HOST=0.0.0.0
 API_PORT=8000
 CORS_ORIGINS=https://notebooks.amd.com
 LLM_TEMPERATURE=0.1
 LLM_MAX_TOKENS=1500
-```
-
----
-
-## JupyterHub Startup (notebooks.amd.com) — Full Sequence
-
-```bash
-# 1. Install Node if needed
-apt-get install -y nodejs
-
-# 2. Pull latest
-cd /workspace/shared/soc-analyst-copilot
-git fetch origin && git reset --hard origin/main
-
-# 3. Start Ollama (MI300X GFX fix included in script)
-chmod +x scripts/start_ollama.sh
-./scripts/start_ollama.sh &
-
-# 4. Build frontend for port 8000
-cd frontend
-npm install
-VITE_BASE_PATH=/jupyter-hack-team-2652-260611211844-791ed408/proxy/8000/ npm run build
-
-# 5. Start backend (serves frontend + API on same port)
-cd ../backend
-pip install -e .
-uvicorn app.main:app --host 0.0.0.0 --port 8000
-
-# 6. Open browser
-# https://notebooks.amd.com/jupyter-hack-team-2652-260611211844-791ed408/proxy/8000/
 ```
 
 ---
@@ -236,8 +254,7 @@ type SSEEvent =
 ## Things to Add / Improve
 
 ### High Priority
-- [ ] Confirm agents run end-to-end with real LLM on MI300X (ISA fix pending test)
-- [ ] File upload button — drag-and-drop JSON alert file → `startAnalysis()`
+- [ ] File upload — drag-and-drop JSON alert file → `startAnalysis()`
 - [ ] Real SIEM connector (Splunk/Elastic → POST to `/api/analysis/run`)
 
 ### Medium Priority
@@ -248,7 +265,7 @@ type SSEEvent =
 
 ### Low Priority
 - [ ] Unit tests (Vitest frontend, pytest backend)
-- [ ] Dockerfiles to match existing docker-compose.yml
+- [ ] Docker Compose (works on plain VM/server, blocked on JupyterHub)
 - [ ] Dark mode (tokens support it, needs ThemeProvider)
 - [ ] Streaming token-by-token display per agent
 
@@ -258,9 +275,10 @@ type SSEEvent =
 
 | Issue | Root Cause | Fix |
 |-------|-----------|-----|
-| Agents don't run on JupyterHub | API calls resolve to wrong host | `api.js` now uses `BASE_URL` — rebuild frontend |
-| `HSA_STATUS_ERROR_INVALID_ISA` | Wrong GFX version for MI300X | `HSA_OVERRIDE_GFX_VERSION=9.4.2` |
+| Blank page in browser | Wrong session ID in build | Rebuild with correct `VITE_BASE_PATH` |
+| Run Analysis does nothing | `VITE_API_BASE_URL` not set at build | Rebuild with both env vars |
+| `HSA_STATUS_ERROR_INVALID_ISA` | Wrong GFX version for MI300X | `start_ollama.sh` sets `9.4.2` automatically |
 | Stale LLM config after `.env` change | `lru_cache` holds old `LLMService` | Restart uvicorn |
-| Blank page on JupyterHub | Assets load from wrong base path | `VITE_BASE_PATH=.../proxy/8000/ npm run build` |
-| `npm: command not found` | Node not installed in container | `apt-get install -y nodejs` |
+| `E: Unable to locate package nodejs` | Default apt repo has no Node | `start.sh` uses NodeSource install automatically |
 | `git pull` fails (local changes) | Server has modified files | `git fetch origin && git reset --hard origin/main` |
+| `git reset` fails / permission error | Stale lock file | `rm -f .git/index.lock` then retry |
