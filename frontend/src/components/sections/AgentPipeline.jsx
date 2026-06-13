@@ -63,26 +63,25 @@ export default function AgentPipeline({ agents }) {
         </div>
       </div>
 
-      {/* Pipeline: 5 cards in a flex-wrap row */}
+      {/* Pipeline: 5 equal-width columns, no trailing space */}
       <div
         style={{
-          display: "flex",
-          flexWrap: "wrap",
+          display: "grid",
+          gridTemplateColumns: "repeat(5, 1fr)",
           gap: SPACE.sm,
         }}
       >
         {AGENT_META.map((meta) => {
           const agentState = agentMap[meta.key] || { status: "waiting", message: "" };
           return (
-            <div key={meta.key} style={{ flex: "1 1 180px", maxWidth: 220 }}>
-              <AgentCard
-                title={meta.title}
-                desc={meta.desc}
-                status={agentState.status}
-                message={agentState.message}
-                step={meta.step}
-              />
-            </div>
+            <AgentCard
+              key={meta.key}
+              title={meta.title}
+              desc={meta.desc}
+              status={agentState.status}
+              message={agentState.message}
+              step={meta.step}
+            />
           );
         })}
       </div>
