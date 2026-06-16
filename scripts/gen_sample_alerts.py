@@ -730,7 +730,9 @@ def post_alerts(alerts: list, url: str) -> None:
     try:
         with urllib.request.urlopen(req, timeout=10) as resp:
             print(f"[✓] POST {url} → {resp.status} {resp.reason}", file=sys.stderr)
-            print(f"    Response: {resp.read(200).decode()}", file=sys.stderr)
+            # The backend returns an SSE stream that runs until all agents finish.
+            # Don't read the body here — the frontend consumes the stream separately.
+            print(f"    Pipeline started. Open the UI to see agent results.", file=sys.stderr)
     except urllib.error.HTTPError as e:
         print(f"[✗] HTTP {e.code}: {e.read(300).decode()}", file=sys.stderr)
         sys.exit(1)
