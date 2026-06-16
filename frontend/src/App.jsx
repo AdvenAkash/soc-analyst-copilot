@@ -20,9 +20,11 @@ export default function App() {
   const { state, startAnalysis, reset } = useAnalysis();
   const [selectedIncident, setSelectedIncident] = useState(null);
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [customAlerts, setCustomAlerts] = useState(null);
 
-  const fpIds    = state.incidents.flatMap((i) => i.fp_ids || []);
-  const phase    = state.status === "done" ? "complete" : state.status;
+  const activeAlerts = customAlerts || SAMPLE_ALERTS;
+  const fpIds        = state.incidents.flatMap((i) => i.fp_ids || []);
+  const phase        = state.status === "done" ? "complete" : state.status;
 
   const {
     visibleAlerts,
@@ -41,17 +43,26 @@ export default function App() {
 
   const feedAlerts = isLive || visibleAlerts.length > 0
     ? visibleAlerts
-    : SAMPLE_ALERTS;
+    : activeAlerts;
 
   const handleRun = () => {
     setSelectedIncident(null);
-    startAnalysis(SAMPLE_ALERTS);
+    startAnalysis(activeAlerts);
+    setActiveTab("dashboard");
+  };
+
+  const handleUpload = (alerts) => {
+    setCustomAlerts(alerts);
+    setSelectedIncident(null);
+    reset();
+    startAnalysis(alerts);
     setActiveTab("dashboard");
   };
 
   const handleReset = () => {
     stopLive();
     reset();
+    setCustomAlerts(null);
     setSelectedIncident(null);
   };
 
@@ -60,12 +71,13 @@ export default function App() {
       <GlobalNav activeTab={activeTab} onNav={setActiveTab} />
       <SubNav
         status={state.status}
-        alertCount={SAMPLE_ALERTS.length}
+        alertCount={activeAlerts.length}
         incidentCount={state.incidents.length}
         isLive={isLive}
         onRun={handleRun}
         onLive={startLive}
         onReset={handleReset}
+        onUpload={handleUpload}
       />
 
       <main style={{ maxWidth: 1440, margin: "0 auto", padding: `0 ${SPACE.lg}px` }}>
@@ -75,7 +87,7 @@ export default function App() {
           <>
             <HeroSection status={state.status} onRun={handleRun} />
             <StatsStrip
-              alertCount={SAMPLE_ALERTS.length}
+              alertCount={activeAlerts.length}
               incidentCount={state.incidents.length}
               fpCount={fpIds.length}
               agentsDone={state.agentResults.filter((a) => a.status === "done").length}
@@ -144,7 +156,7 @@ export default function App() {
           <div style={{ marginTop: SPACE.lg, marginBottom: 120 }}>
             <PageHeader
               title="Alert Feed"
-              sub={`${SAMPLE_ALERTS.length} alerts ingested · ${state.activeAlertIds.length} linked to incidents`}
+              sub={`${activeAlerts.length} alerts ingested · ${state.activeAlertIds.length} linked to incidents`}
               onRun={handleRun}
               status={state.status}
             />
@@ -198,7 +210,7 @@ export default function App() {
             <MetricsDashboard
               incidents={state.incidents}
               fpIds={fpIds}
-              totalAlerts={SAMPLE_ALERTS.length}
+              totalAlerts={activeAlerts.length}
               phase={phase}
             />
           </div>

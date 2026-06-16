@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { COLOR, TYPE, SPACE, RADIUS } from "../../constants/tokens.js";
 import Button from "../ui/Button.jsx";
 
@@ -10,9 +11,27 @@ import Button from "../ui/Button.jsx";
  *   onRun: () => void,
  *   onLive: () => void,
  *   onReset: () => void,
+ *   onUpload: (alerts: any[]) => void,
  * }} props
  */
-export default function SubNav({ status, alertCount, incidentCount, isLive, onRun, onLive, onReset }) {
+export default function SubNav({ status, alertCount, incidentCount, isLive, onRun, onLive, onReset, onUpload }) {
+  const fileRef = useRef(null);
+
+  function handleFileChange(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const parsed = JSON.parse(ev.target.result);
+        if (Array.isArray(parsed) && parsed.length > 0) onUpload(parsed);
+      } catch {
+        alert("Invalid JSON file — expected an array of alert objects.");
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  }
   const phase     = status === "done" ? "complete" : status;
   const isRunning = phase === "running";
   const isDone    = phase === "complete";
@@ -54,6 +73,34 @@ export default function SubNav({ status, alertCount, incidentCount, isLive, onRu
       <div style={{ display: "flex", gap: SPACE.xs, alignItems: "center" }}>
         {phase === "idle" && !isLive && (
           <>
+            <input
+              ref={fileRef}
+              type="file"
+              accept=".json"
+              style={{ display: "none" }}
+              onChange={handleFileChange}
+            />
+            <button
+              onClick={() => fileRef.current?.click()}
+              style={{
+                ...TYPE.scale.caption,
+                color: COLOR.inkMuted48,
+                background: "none",
+                border: `1px solid ${COLOR.hairline}`,
+                borderRadius: RADIUS.pill,
+                padding: "8px 14px",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: SPACE.xxs,
+              }}
+            >
+              <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                <path d="M6.5 1v7M4 4.5l2.5-3.5 2.5 3.5" stroke={COLOR.inkMuted48} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M1.5 9.5v1A1.5 1.5 0 003 12h7a1.5 1.5 0 001.5-1.5v-1" stroke={COLOR.inkMuted48} strokeWidth="1.3" strokeLinecap="round"/>
+              </svg>
+              Upload JSON
+            </button>
             <button
               onClick={onLive}
               style={{
