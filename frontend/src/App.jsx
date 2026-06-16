@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import GlobalNav from "./components/layout/GlobalNav.jsx";
 import SubNav from "./components/layout/SubNav.jsx";
 import HeroSection from "./components/sections/HeroSection.jsx";
@@ -409,117 +409,200 @@ function PlaybookCard({ incident }) {
   );
 }
 
-function SettingsPanel() {
-  const fields = [
-    { label: "LLM Backend",   value: "ollama",                              hint: "vllm | ollama",                         group: "Backend" },
-    { label: "Ollama URL",    value: "http://localhost:11434",               hint: "Default Ollama port",                   group: "Backend" },
-    { label: "vLLM URL",      value: "http://localhost:8001/v1",             hint: "OpenAI-compatible endpoint",            group: "Backend" },
-    { label: "Model",         value: "llama3.1:8b",                         hint: "Any HuggingFace / Ollama model ID",     group: "Model" },
-    { label: "Temperature",   value: "0.1",                                 hint: "0.0 – 1.0 (lower = deterministic)",    group: "Model" },
-    { label: "Max Tokens",    value: "1500",                                hint: "Per agent response",                    group: "Model" },
-    { label: "CORS Origins",  value: "https://notebooks.amd.com",           hint: "Frontend origin(s), comma-separated",  group: "Deployment" },
-    { label: "API Port",      value: "8000",                                hint: "FastAPI server port",                   group: "Deployment" },
-  ];
+const API_BASE = (
+  import.meta.env.VITE_API_BASE_URL ||
+  import.meta.env.BASE_URL ||
+  "/"
+).replace(/\/$/, "");
 
-  const groups = [...new Set(fields.map((f) => f.group))];
+function SettingsPanel() {
+  const [cfg, setCfg]       = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]   = useState(null);
+
+  const load = () => {
+    setLoading(true);
+    setError(null);
+    fetch(`${API_BASE}/api/config`)
+      .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+      .then((d) => { setCfg(d); setLoading(false); })
+      .catch((e) => { setError(e.message); setLoading(false); });
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const GROUPS = [
+    {
+      title: "Active Configuration",
+      rows: [
+        { label: "LLM Backend",  key: "llm_backend",  hint: "vllm | ollama" },
+        { label: "Active Model", key: "active_model",  hint: "Currently loaded model", highlight: true },
+        { label: "Temperature",  key: "temperature",   hint: "0.0 – 1.0 (lower = deterministic)" },
+        { label: "Max Tokens",   key: "max_tokens",    hint: "Per-agent response limit" },
+      ],
+    },
+    {
+      title: "Ollama",
+      rows: [
+        { label: "URL",     key: "ollama_url",     hint: "Ollama server endpoint" },
+        { label: "Model",   key: "ollama_model",   hint: "ollama pull <model>" },
+        { label: "Timeout", key: "ollama_timeout", hint: "seconds", suffix: "s" },
+      ],
+    },
+    {
+      title: "vLLM",
+      rows: [
+        { label: "URL",     key: "vllm_url",     hint: "OpenAI-compatible endpoint" },
+        { label: "Model",   key: "vllm_model",   hint: "HuggingFace model ID" },
+        { label: "Timeout", key: "vllm_timeout", hint: "seconds", suffix: "s" },
+      ],
+    },
+    {
+      title: "Deployment",
+      rows: [
+        { label: "API Port",      key: "api_port",      hint: "FastAPI server port" },
+        { label: "CORS Origins",  key: "cors_origins",  hint: "Allowed frontend origins" },
+      ],
+    },
+  ];
 
   return (
     <div style={{ marginTop: SPACE.lg, display: "flex", flexDirection: "column", gap: SPACE.lg }}>
-      {/* Info banner */}
-      <div
-        style={{
-          background: "rgba(0,102,204,0.05)",
-          border: `1px solid rgba(0,102,204,0.15)`,
-          borderRadius: RADIUS.md,
-          padding: `${SPACE.md}px`,
-          display: "flex",
-          gap: SPACE.sm,
-          alignItems: "flex-start",
-        }}
-      >
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0, marginTop: 1 }}>
-          <circle cx="8" cy="8" r="7" stroke={COLOR.primary} strokeWidth="1.5"/>
-          <path d="M8 7v5M8 5v1" stroke={COLOR.primary} strokeWidth="1.5" strokeLinecap="round"/>
-        </svg>
-        <p style={{ ...TYPE.scale.caption, color: COLOR.inkMuted48, margin: 0 }}>
-          Edit these values in{" "}
-          <code
-            style={{
+
+      {/* Banner */}
+      <div style={{
+        background: "rgba(0,102,204,0.05)",
+        border: `1px solid rgba(0,102,204,0.15)`,
+        borderRadius: RADIUS.md,
+        padding: `${SPACE.md}px`,
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        gap: SPACE.sm,
+      }}>
+        <div style={{ display: "flex", gap: SPACE.sm, alignItems: "flex-start" }}>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0, marginTop: 1 }}>
+            <circle cx="8" cy="8" r="7" stroke={COLOR.primary} strokeWidth="1.5"/>
+            <path d="M8 7v5M8 5v1" stroke={COLOR.primary} strokeWidth="1.5" strokeLinecap="round"/>
+          </svg>
+          <p style={{ ...TYPE.scale.caption, color: COLOR.inkMuted48, margin: 0 }}>
+            Values are read from{" "}
+            <code style={{
               fontFamily: `"SF Mono", "JetBrains Mono", monospace`,
               background: COLOR.canvasParchment,
               border: `1px solid ${COLOR.hairline}`,
               padding: "1px 5px",
               borderRadius: RADIUS.xs,
               color: COLOR.primaryFocus,
-            }}
-          >
-            backend/.env
-          </code>{" "}
-          and restart uvicorn to apply.
-        </p>
-      </div>
-
-      {groups.map((group) => (
-        <div
-          key={group}
+            }}>backend/.env</code>
+            {" "}— edit the file and restart uvicorn, then click Refresh.
+          </p>
+        </div>
+        <button
+          onClick={load}
+          disabled={loading}
           style={{
-            background: COLOR.canvas,
-            borderRadius: RADIUS.lg,
-            border: `1px solid ${COLOR.hairline}`,
-            overflow: "hidden",
+            ...TYPE.scale.caption,
+            color: loading ? COLOR.inkMuted48 : COLOR.primary,
+            background: "none",
+            border: `1px solid ${loading ? COLOR.hairline : "rgba(0,102,204,0.25)"}`,
+            borderRadius: RADIUS.pill,
+            padding: "6px 14px",
+            cursor: loading ? "default" : "pointer",
+            flexShrink: 0,
+            display: "flex",
+            alignItems: "center",
+            gap: SPACE.xxs,
           }}
         >
-          {/* Group header */}
-          <div
-            style={{
-              padding: `${SPACE.sm}px ${SPACE.lg}px`,
-              background: COLOR.canvasParchment,
-              borderBottom: `1px solid ${COLOR.hairline}`,
-            }}
-          >
-            <span
-              style={{
-                ...TYPE.scale.navLink,
-                color: COLOR.inkMuted48,
-                textTransform: "uppercase",
-                letterSpacing: "0.09em",
-                fontWeight: 600,
-              }}
-            >
-              {group}
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <path d="M10.5 6A4.5 4.5 0 1 1 6 1.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+            <path d="M6 1.5 8 3.5 6 5.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          {loading ? "Loading…" : "Refresh"}
+        </button>
+      </div>
+
+      {/* Error */}
+      {error && (
+        <div style={{
+          background: "rgba(255,59,48,0.05)",
+          border: `1px solid rgba(255,59,48,0.20)`,
+          borderRadius: RADIUS.md,
+          padding: `${SPACE.md}px`,
+        }}>
+          <p style={{ ...TYPE.scale.caption, color: COLOR.criticalColor, margin: 0 }}>
+            Could not reach backend: {error} — is uvicorn running?
+          </p>
+        </div>
+      )}
+
+      {/* Groups */}
+      {GROUPS.map((group) => (
+        <div key={group.title} style={{
+          background: COLOR.canvas,
+          borderRadius: RADIUS.lg,
+          border: `1px solid ${COLOR.hairline}`,
+          overflow: "hidden",
+        }}>
+          <div style={{
+            padding: `${SPACE.sm}px ${SPACE.lg}px`,
+            background: COLOR.canvasParchment,
+            borderBottom: `1px solid ${COLOR.hairline}`,
+          }}>
+            <span style={{
+              ...TYPE.scale.navLink,
+              color: COLOR.inkMuted48,
+              textTransform: "uppercase",
+              letterSpacing: "0.09em",
+              fontWeight: 600,
+            }}>
+              {group.title}
             </span>
           </div>
 
-          {/* Rows */}
-          {fields
-            .filter((f) => f.group === group)
-            .map((f, i, arr) => (
-              <div
-                key={f.label}
-                style={{
-                  display: "flex",
-                  gap: SPACE.lg,
-                  padding: `${SPACE.sm}px ${SPACE.lg}px`,
-                  borderBottom: i < arr.length - 1 ? `1px solid ${COLOR.dividerSoft}` : "none",
-                  alignItems: "center",
-                }}
-              >
+          {group.rows.map((row, i, arr) => {
+            const rawVal = cfg ? cfg[row.key] : null;
+            const val = rawVal !== null && rawVal !== undefined
+              ? String(rawVal) + (row.suffix || "")
+              : "—";
+            const isActive = row.highlight && cfg?.llm_backend;
+
+            return (
+              <div key={row.label} style={{
+                display: "flex",
+                gap: SPACE.lg,
+                padding: `${SPACE.sm}px ${SPACE.lg}px`,
+                borderBottom: i < arr.length - 1 ? `1px solid ${COLOR.dividerSoft}` : "none",
+                alignItems: "center",
+                background: isActive ? "rgba(0,102,204,0.03)" : "transparent",
+              }}>
                 <span style={{ ...TYPE.scale.captionStrong, color: COLOR.ink, minWidth: 140 }}>
-                  {f.label}
+                  {row.label}
                 </span>
-                <code
-                  style={{
+                {loading ? (
+                  <div style={{
+                    height: 14,
+                    width: 160,
+                    background: COLOR.hairline,
+                    borderRadius: RADIUS.xs,
+                    flex: 1,
+                  }} />
+                ) : (
+                  <code style={{
                     ...TYPE.scale.caption,
                     fontFamily: `"SF Mono", "JetBrains Mono", monospace`,
-                    color: COLOR.primaryFocus,
+                    color: isActive ? COLOR.primary : COLOR.primaryFocus,
+                    fontWeight: isActive ? 700 : 400,
                     flex: 1,
-                  }}
-                >
-                  {f.value}
-                </code>
-                <span style={{ ...TYPE.scale.finePrint, color: COLOR.inkMuted48 }}>{f.hint}</span>
+                  }}>
+                    {val}
+                  </code>
+                )}
+                <span style={{ ...TYPE.scale.finePrint, color: COLOR.inkMuted48 }}>{row.hint}</span>
               </div>
-            ))}
+            );
+          })}
         </div>
       ))}
     </div>
