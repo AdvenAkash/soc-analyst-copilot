@@ -78,6 +78,68 @@ Node.js persists in the container so you do **not** need to reinstall it.
 
 ---
 
+## Loading Sample / Test Data
+
+The repo includes a synthetic alert generator that produces realistic
+multi-stage attack campaigns matching the app's Alert schema.
+
+**Open a second terminal** while `start.sh` is running in the first, then:
+
+### Option A — Upload via the UI (recommended)
+
+```bash
+cd /workspace/shared/soc-analyst-copilot
+
+# Save to home dir — visible in JupyterHub file browser
+python3 scripts/gen_sample_alerts.py --campaign apt --out ~/alerts.json
+```
+
+In the JupyterHub file browser, download `~/alerts.json`.  
+In the app, click **Upload JSON** (top bar, left of "Live Mode") and select the file.  
+The 5-agent pipeline starts automatically.
+
+### Option B — POST directly to backend
+
+```bash
+# APT intrusion campaign (23 alerts) — default
+python3 scripts/gen_sample_alerts.py --post
+
+# Ransomware outbreak (14 alerts)
+python3 scripts/gen_sample_alerts.py --campaign ransomware --post
+
+# Insider threat (10 alerts)
+python3 scripts/gen_sample_alerts.py --campaign insider --post
+```
+
+### Available Campaigns
+
+| Campaign | Scenario | Alerts |
+|----------|----------|--------|
+| `apt` (default) | External brute-force → lateral movement → DCSync → exfil | 23 |
+| `ransomware` | Phishing macro → LockBit propagation → mass encryption | 14 |
+| `insider` | Employee bulk-downloads source code + uploads to personal cloud | 10 |
+
+Each campaign includes deliberate false positives for the Triage agent to dismiss.
+
+### Alert Schema Reference
+
+```json
+{
+  "id":     "ALT-0001",
+  "time":   "09:12:33",
+  "sev":    "CRITICAL",
+  "rule":   "SSH Brute Force Detected",
+  "src":    "185.220.101.45",
+  "dst":    "10.0.1.15",
+  "detail": "53 failed SSH attempts — password spray",
+  "host":   "LINUX-WEB-01"
+}
+```
+
+`sev` must be one of: `CRITICAL` · `HIGH` · `MEDIUM` · `LOW`
+
+---
+
 ## Manual Setup (Fallback — 3 Terminals)
 
 Use this if `start.sh` fails for any reason.
@@ -167,6 +229,9 @@ Open: `https://notebooks.amd.com/<YOUR-SESSION-ID>/proxy/5173/`
 | Stale LLM config | `lru_cache` holds old service | Restart uvicorn (Ctrl+C then re-run) |
 | `git pull` fails (local changes) | Server has modified files | `git fetch origin && git reset --hard origin/main` |
 | `git reset` permission error | Stale lock file | `rm -f .git/index.lock` then retry |
+| `/tmp/alerts.json` not visible | `/tmp` hidden in JupyterHub | Save to `~/alerts.json` instead |
+| Upload JSON shows 20 alerts | Loaded file not replacing defaults | Click Reset first, then Upload JSON again |
+| Upload JSON does nothing | File is not a JSON array | Verify: `python3 -c "import json,sys; print(len(json.load(open(sys.argv[1]))))" alerts.json` |
 
 ---
 
