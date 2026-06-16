@@ -131,8 +131,8 @@ log "Configuring backend…"
 cat > "$REPO/backend/.env" << 'EOF'
 LLM_BACKEND=ollama
 OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_MODEL=llama3.1:8b
-OLLAMA_TIMEOUT_SECONDS=120
+OLLAMA_MODEL=qwen2.5:72b
+OLLAMA_TIMEOUT_SECONDS=300
 VLLM_BASE_URL=http://localhost:8001/v1
 VLLM_MODEL=meta-llama/Llama-3.1-8B-Instruct
 VLLM_API_KEY=EMPTY

@@ -169,8 +169,8 @@ git fetch origin && git reset --hard origin/main
 cat > backend/.env << 'EOF'
 LLM_BACKEND=ollama
 OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_MODEL=llama3.1:8b
-OLLAMA_TIMEOUT_SECONDS=120
+OLLAMA_MODEL=qwen2.5:72b
+OLLAMA_TIMEOUT_SECONDS=300
 VLLM_BASE_URL=http://localhost:8001/v1
 VLLM_MODEL=meta-llama/Llama-3.1-8B-Instruct
 VLLM_API_KEY=EMPTY
@@ -190,7 +190,7 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 Verify:
 ```bash
 curl -s http://localhost:8000/api/health
-# {"status":"ok","llm_backend":"ollama","model":"llama3.1:8b"}
+# {"status":"ok","llm_backend":"ollama","model":"qwen2.5:72b"}
 ```
 
 ### Terminal 3 — Frontend
