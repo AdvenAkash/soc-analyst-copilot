@@ -4,7 +4,7 @@
 
 set -euo pipefail
 
-MODEL="${OLLAMA_MODEL:-qwen2.5:72b}"
+MODEL="${OLLAMA_MODEL:-llama3.1:8b}"
 # GFX version by GPU family:
 #   AMD MI300X (notebooks.amd.com) → 9.4.2
 #   AMD MI250X                     → 9.0.10
